@@ -20,14 +20,16 @@ class Reranking:
         attribute_unique = list(set(attributes))
         non_exist_attribute = [i for i in distribution if i not in attribute_unique]
         non_required_attribute = [i for i in attribute_unique if i not in distribution]
-        distri_sum = sum(distribution.values()) 
+        distri_sum = sum(distribution.values())
         if non_exist_attribute:
             print(f"Wrong attribute name in distribution: {non_exist_attribute}.")
         if non_required_attribute:
-            print(f"Distribution of feature {non_required_attribute} are not specified.")
+            print(
+                f"Distribution of feature {non_required_attribute} are not specified."
+            )
         if distri_sum > 1:
             raise ValueError("Sum of required attribute distribution larger than 1.")
-                
+
         self.df_formated = self.format_init_inputs(item_ids, attributes, distribution)
         self.data, self.p = self._format_alg_inputs()
 
@@ -52,7 +54,9 @@ class Reranking:
         )
         df.reset_index(drop=True, inplace=True)
         df["attri_rank"] = (
-            df.groupby("attribute_enc").apply(lambda x: [i for i in range(len(x))]).sum()
+            df.groupby("attribute_enc")
+            .apply(lambda x: [i for i in range(len(x))])
+            .sum()
         )
         df_distr = pd.DataFrame(
             {"attribute": distribution.keys(), "distr": distribution.values()}
@@ -141,7 +145,7 @@ class Reranking:
                 for ai, v in counts.items()
                 if v >= math.floor(k * self.p[ai]) and v < math.ceil(k * self.p[ai])
             }  # maximum requirement violation
-            if below_min or below_max: 
+            if below_min or below_max:
                 try:
                     next_attri = self._process_violated_attributes(
                         below_min, below_max, counts, method
@@ -154,9 +158,9 @@ class Reranking:
                         k: v for k, v in self.data.items() if v not in re_ranked_ranking
                     }
                     next_attri = min(rest_data, key=lambda k: rest_data[k])[0]
-            else: # below_min and below_max are empty
+            else:  # below_min and below_max are empty
                 next_attri = 0
-                
+
             re_ranked_ranking.append(self.data[(next_attri, counts[next_attri])])
             counts[next_attri] += 1
         if verbose:

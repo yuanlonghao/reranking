@@ -1,8 +1,6 @@
 import math
 
 import numpy as np
-import pandas as pd
-import scipy
 
 
 def proportion(df, k, ai):
