@@ -9,8 +9,6 @@ logger = getLogger(__name__)
 
 
 class Reranking:
-    ## TODO: add a attribute named unknown
-
     def __init__(
         self,
         item_ids: List[int],
