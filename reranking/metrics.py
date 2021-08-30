@@ -1,117 +1,129 @@
 import math
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
 
 
-def proportion(df, k, ai):
-    count = 0
-    for i in range(k):
-        if df[i] == ai:
-            count = count + 1
-    return count / k
-
-
-def Skew(df, p, k, ai):
-    s = math.log((proportion(df, k, ai) + 0.0001) / (p[ai] + 0.0001))
+def skew(
+    item_attributes: List[Union[str, int]],
+    object_attribute: Union[str, int],
+    desired_proportion: float,
+    k: int,
+) -> float:
+    """
+    item_attributes: name or index of the attribute of each recommended item
+    object_attribute: skew of which attribute
+    desired_proportion: desired propportion of the attribute
+    k: top k ranked results
+    """
+    count = item_attributes[:k].count(object_attribute)
+    propotion = count / k
+    s = math.log(propotion + 1e-10 / (desired_proportion + 1e-10))
     return s
 
 
-def MinSkew(df, p, k):
-    min_skew = float("inf")
-    for x in range(len(p)):
-        m = Skew(list(df), p, k, x)
-        if m < min_skew:
-            min_skew = m
-    return min_skew
+def min_max_skew(
+    item_attributes: List[Union[str, int]],
+    dict_p: Dict[Union[str, int], float],
+    k: int,
+    min_max: str = "min",
+) -> float:
+    """
+    item_attributes: the attribute of each recommended item
+    dict_p:  Dict[name/index of the attribute, desired_proportion]
+    k: top k ranked results
+    """
+    skew_list: List[float] = []
+    for object_attribute, desired_proportion in dict_p.items():
+        skew_list.append(skew(item_attributes, object_attribute, desired_proportion, k))
+    if min_max == "min":
+        return min(skew_list)
+    else:
+        return max(skew_list)
 
 
-def MaxSkew(df, p, k):
-    max_skew = -float("inf")
-    for x in range(len(p)):
-        m = Skew(list(df), p, k, x)
-        if m > max_skew:
-            max_skew = m
-    return max_skew
+def kl_divergence(distri_1: List[float], distri_2: List[float]) -> float:
+    """
+    distri_1, distri_2: two list of distribution values
+    """
+    vals = []
+    for i, j in zip(distri_1, distri_2):
+        if i * j != 0:
+            vals.append(i * math.log(i / j))
+    return sum(vals)
 
 
-def KLD(D1, D2):
-    a = np.asarray(D1, dtype=np.float)
-    b = np.asarray(D2, dtype=np.float)
+def ndkl(
+    item_attributes: List[Union[str, int]], dict_p: Dict[Union[str, int], float]
+) -> float:
+    """
+    Normalized discounted cumulative KL-divergence (NDKL)
 
-    return np.sum(np.where(a != 0, a * np.log((a + 0.00001) / (b + 0.00001)), 0))
+    item_attributes: the attribute of each recommended item
+    dict_p:  Dict[name/index of the attribute, desired_proportion]
+    """
+    n_items = len(item_attributes)
 
+    Z = np.sum(1 / (np.log2(np.arange(1, n_items + 1) + 1)))
+    total = 0.0
 
-def NDKL(df, p):
-    Z = np.sum(1 / (np.log2(np.arange(1, len(df) + 1) + 1)))
-    total = 0
-
-    for i in range(1, len(df) + 1):
-        value = df[:i].value_counts(normalize=True)
-        value = value.to_dict()
-        D1 = []
-        for i in range(len(p)):
-            if i in value.keys():
-                D1.append(value[i])
-            else:
-                D1.append(0)
-
-        total = total + (1 / math.log2(i + 1)) * KLD(D1, p)
-
-    return (1 / Z) * total
-
-
-def dcg_at_k(r, k, method=0):
-    r = np.asfarray(r)[:k]
-    if r.size:
-        if method == 0:
-            return r[0] + np.sum(r[1:] / np.log2(np.arange(2, r.size + 1)))
-        elif method == 1:
-            return np.sum(r / np.log2(np.arange(2, r.size + 2)))
-        else:
-            raise ValueError("method must be 0 or 1.")
-    return 0
+    for i in range(1, n_items + 1):
+        value_counts = (
+            pd.Series(item_attributes[:i]).value_counts(normalize=True).to_dict()
+        )
+        distri_1 = []
+        for attr in dict_p:
+            try:
+                distri_1.append(value_counts[attr])
+            except KeyError:
+                distri_1.append(0)
+        distri_2 = list(dict_p.values())
+        total += (1 / math.log2(i + 1)) * kl_divergence(distri_1, distri_2)
+    res: float = (1 / Z) * total
+    return res
 
 
-def ndcg_at_k(df, k, method=0):
-    r = list(df)
-    dcg_max = dcg_at_k(sorted(r, reverse=True), k, method)
+def dcg_at_k(r: List[int], k: int) -> float:
+    r_ = np.asfarray(r)[:k]
+    dcg: float = r_[0] + np.sum(r_[1:] / np.log2(np.arange(2, r_.size + 1)))
+    return dcg
+
+
+def ndcg_at_k(r: List[int], k: int) -> float:
+    dcg_max = dcg_at_k(sorted(r, reverse=True), k)
     if not dcg_max:
         return 0.0
-    return dcg_at_k(r, k, method) / dcg_max
+    return dcg_at_k(r, k) / dcg_max
 
 
-def infeasibleIndex(df, p):
-
-    """Params: df = dataFrame for Ranked List, a= No of Values of Protected Attribute
-    desired_p = desired proportion of ai's (Array){Provisioned for Later Modification}
-    k initial value need to set(default=10)
+def infeasible(
+    item_attributes: List[Union[str, int]],
+    dict_p: Dict[Union[str, int], float],
+    k_max: Optional[int] = None,
+) -> Tuple[int, int]:
 
     """
+    Calculates the infeasible_index and infeasible_count.
+    infeasible_index: from 1 to k, items saitisfy violation condition.
+    infeasible_count: from 1 to k, count of insufficient attributes by violation condition.
+    """
+    if k_max is None:
+        k_max = len(item_attributes)
+    infeasible_index = 0
+    infeasible_count = 0
 
-    data = df[:100]
-    a = len(p)
-    desired_p = p
-    tao_r = 100
-    infeasibleFlag = False
-    InfIndex_tao_r = 0
-    InfCount_tao_r = 0
-
-    for k in range(1, tao_r):
-        data_temp_k = data[:k]
-        infeasibleFlag = False
-        for i in range(a):
-            desired_p_ai = desired_p[i]
-            observed_count_ai = len(data_temp_k[data_temp_k["ai"] == i])
-            desired_count_ai = math.floor(desired_p_ai * k)
-            if observed_count_ai < desired_count_ai:
-                infeasibleFlag = True
-                ## Increment Infeasible Count
-                InfCount_tao_r += 1
-
-        ## Increment Infeasible Index
-        if infeasibleFlag == True:
-            InfIndex_tao_r += 1
-    if InfIndex_tao_r > 99:
-        print(f"You are fucked!! at {a} and it is {InfIndex_tao_r}")
-    Infeasible_Return_array = [InfIndex_tao_r, InfCount_tao_r]
-    return Infeasible_Return_array
+    for k in range(1, k_max):
+        value_counts = pd.Series(item_attributes[:k]).value_counts().to_dict()
+        count_attr = []
+        for attr in dict_p:
+            try:
+                count_attr.append(value_counts[attr])
+            except KeyError:
+                count_attr.append(0)
+        for j, val in enumerate(dict_p.values()):
+            if count_attr[j] < math.floor(val * k):
+                infeasible_count += 1
+                if count_attr[j] != 0:
+                    infeasible_index += 1
+    return infeasible_index, infeasible_count
