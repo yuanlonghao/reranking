@@ -1,6 +1,6 @@
 import math
 from logging import getLogger
-from typing import Any, Dict, List, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -14,20 +14,22 @@ class Reranking:
     & Recommendation Systems with Application to LinkedIn Talent Search
 
     Attributes:
-        item_ids: the item ids which are ranked by recommendation system \
-                    or search engine, from top to bottom.
-        attributes: the attributes corresponding to the each item.
-        distribution: the disired distribution for each attribute
-
+        attributes:
+            the attributes corresponding to the each item ranked by \
+            recommendation system or search engine, from top to bottom.
+        distribution:
+            the disired distribution for each attribute
+        item_ids:
+            the item ids, optional input
     Usage:
         Call `re_rank` method.
     """
 
     def __init__(
         self,
-        item_ids: List[int],
         attributes: List[Union[str, int]],
         distribution: Dict[Union[str, int], float],
+        item_ids: Optional[List[int]] = None,
     ) -> None:
 
         attribute_unique = list(set(attributes))
@@ -46,6 +48,9 @@ class Reranking:
             raise ValueError(f"Sum of desired attribute distribution less than 1.")
         if distri_sum > 1 + 1e-6:
             raise ValueError("Sum of desired attribute distribution larger than 1.")
+
+        if item_ids is None:
+            item_ids = [i for i in range(len(attributes))]
 
         self.distribution = distribution
         self.df_formated = self._format_init(item_ids, attributes, distribution)

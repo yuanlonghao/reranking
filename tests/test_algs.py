@@ -52,7 +52,7 @@ class TestReranking:
         k_max: int,
         algorithm: str,
     ) -> None:
-        ranker = Reranking(rankings, genders, distribution)
+        ranker = Reranking(genders, distribution)
         re_rankings = ranker.re_rank(algorithm=algorithm, k_max=k_max)
 
         re_features = [genders[i] for i in re_rankings]
