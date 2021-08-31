@@ -1,3 +1,11 @@
+"""
+Publish steps:
+- Confirm version number in `setup.py`.
+- Delete the old version files in `/dist`.
+- Wrap package: `python setup.py sdist bdist_wheel`
+- Upload: `twine upload --repository-url https://upload.pypi.org/legacy/ dist/*` (username&password required)
+"""
+
 import setuptools
 
 with open("README.md", "r") as fh:
@@ -5,7 +13,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="reranking",
-    version="0.1.0",
+    version="0.2.0",
     author="Longhao Yuan",
     author_email="yuanlonghao1013@gmail.com",
     long_description=long_description,
