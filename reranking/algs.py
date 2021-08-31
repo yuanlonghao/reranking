@@ -9,34 +9,67 @@ logger = getLogger(__name__)
 
 
 class Reranking:
+    """
+    Re-ranking algorithms in the paper: Fairness-Aware Ranking in Search \
+    & Recommendation Systems with Application to LinkedIn Talent Search
+
+    Attributes:
+        item_ids: the item ids which are ranked by recommendation system \
+                    or search engine, from top to bottom.
+        attributes: the attributes corresponding to the each item.
+        distribution: the disired distribution for each attribute
+        
+    Usage: 
+        Call `re_rank` method.
+    """
+        
     def __init__(
         self,
         item_ids: List[int],
         attributes: List[Union[str, int]],
         distribution: Dict[Union[str, int], float],
     ) -> None:
+        
         attribute_unique = list(set(attributes))
         non_exist_attribute = [i for i in distribution if i not in attribute_unique]
-        non_required_attribute = [i for i in attribute_unique if i not in distribution]
+        non_desired_attribute = [i for i in attribute_unique if i not in distribution]
         distri_sum = sum(distribution.values())
         if non_exist_attribute:
-            print(f"Wrong attribute name in distribution: {non_exist_attribute}.")
-        if non_required_attribute:
-            print(
-                f"Distribution of feature {non_required_attribute} are not specified."
+            ValueError(
+                f"Wrong attribute name in desired distribution: {non_exist_attribute}."
+            )
+        if non_desired_attribute:
+            ValueError(
+                f"The distribution of feature {non_desired_attribute} are not specified."
             )
         if distri_sum > 1:
-            raise ValueError("Sum of required attribute distribution larger than 1.")
+            raise ValueError("Sum of desired attribute distribution larger than 1.")
 
-        self.df_formated = self.format_init_inputs(item_ids, attributes, distribution)
+        self.df_formated = self._format_init(item_ids, attributes, distribution)
         self.data, self.p = self._format_alg_inputs()
 
+    def re_rank(
+        self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
+    ) -> Union[List[int], pd.DataFrame]:
+        """
+        Process all the four re-ranking algorithms.
+        """
+        
+        if algorithm == "det_const_sort":
+            re_ranking = self.re_rank_ics(k_max, verbose)
+        elif algorithm in ['det_greedy', 'det_cons', 'det_relaxed']:
+            re_ranking = self.re_rank_greedy(k_max, algorithm, verbose)
+        else:
+            raise NotImplementedError("Invalid algorithm name.")
+        return re_ranking
+
     @staticmethod
-    def format_init_inputs(
+    def _format_init(
         item_ids: List[int],
         attributes: List[Union[str, int]],
         distribution: Dict[Union[str, int], float],
     ) -> pd.DataFrame:
+        
         rankings = [i for i in range(len(item_ids))]
         factorized_attribute = pd.factorize(attributes)[0]
         df = pd.DataFrame(
@@ -70,9 +103,10 @@ class Reranking:
             data: in {(attribute_index, ranking in the attribute): overall ranking, ...} format.
             p: List[float] of distributions of each attribute.
         """
+        
         data = {
-            (ai, ai_rank): rank
-            for ai, ai_rank, rank in zip(
+            (attr, attr_rank): rank
+            for attr, attr_rank, rank in zip(
                 self.df_formated.attribute_enc,
                 self.df_formated.attri_rank,
                 self.df_formated.model_rank,
@@ -82,6 +116,7 @@ class Reranking:
         return data, p
 
     def _get_verbose(self, re_ranked_ranking: List[int], k_max: int) -> pd.DataFrame:
+        
         df_verbose = pd.DataFrame(
             {"model_rank": re_ranked_ranking, "re_rank": [i for i in range(k_max)]}
         )
@@ -95,72 +130,89 @@ class Reranking:
         below_min: Set[int],
         below_max: Set[int],
         counts: Dict[int, int],
-        method: str,
+        k: int,
+        algorithm: str,
     ) -> int:
+        
         s: Dict[int, Union[int, float]] = {}
-        if len(below_min) != 0:
+        if below_min:
             for i in below_min:
                 s[i] = self.data[(i, counts[i])]
-            # get the required attribute with toppest rank
-            next_attri = min(s, key=lambda k: s[k])
+            # get the desired attribute with toppest rank
+            next_attr = min(s, key=lambda x: s[x])
         else:
-            if method == "det_greedy":
+            if algorithm == "det_greedy":
                 for i in below_max:
                     s[i] = self.data[(i, counts[i])]
-                next_attri = min(s, key=lambda k: s[k])
-            elif method == "det_cons":
+                next_attr = min(s, key=lambda x: s[x])
+            elif algorithm == "det_cons":
                 for i in below_max:
-                    s[i] = math.ceil(i * self.p[i]) / self.p[i]
-                next_attri = max(s, key=lambda k: s[k])
-            elif method == "det_relax":
+                    s[i] = math.ceil(k * self.p[i]) / self.p[i]
+                self.data[(i, counts[i])]  # catch KeyError exception
+                next_attr = max(s, key=lambda x: s[x])
+            elif algorithm == "det_relaxed":
                 ns = {}
                 for i in below_max:
-                    ns[i] = math.ceil(math.ceil(i * self.p[i]) / self.p[i])
+                    ns[i] = math.ceil(math.ceil(k * self.p[i]) / self.p[i])
                 temp = min(ns.values())
-                next_attriSet = [key for key in ns if ns[key] == temp]
-                for i in next_attriSet:
+                next_attr_set = [key for key in ns if ns[key] == temp]
+                for i in next_attr_set:
                     s[i] = self.data[(i, counts[i])]
-                next_attri = min(s, key=lambda k: s[k])
+                next_attr = min(s, key=lambda x: s[x])
             else:
-                raise NotImplementedError("Not a valid name for the greedy methods.")
-        return next_attri
+                raise NotImplementedError("Invalid name for the greedy algorithms.")
+        return next_attr
+
+    def _input_top_rank(self, re_ranked_ranking: List[int]) -> int:
+        """
+        Gets next attribute which is of the toppest rank item in the remained items.
+
+        Usage: not enough item for the required attribute or both `below_min` \
+               and `below_max` are empty.
+        """
+        
+        data_rest: Dict[Tuple[int, int], int] = {
+            idx: rank
+            for idx, rank in self.data.items()
+            if rank not in re_ranked_ranking
+        }
+        next_attr = min(data_rest, key=lambda k: data_rest[k])[0]
+        return next_attr
 
     def re_rank_greedy(
-        self, k_max: int = 10, method: str = "det_greedy", verbose: bool = False
+        self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
     ) -> Union[List[int], pd.DataFrame]:
-        """Implements three greedy-based algorithms: `det_greedy`, `dec_cons`, `det_relax`."""
+        """Implements the greedy-based algorithms: `DetGreedy`, `DetCons`, `DetRelaxed`."""
+
         re_ranked_ranking: List[int] = []
-        # if self.df_formated.attribute.nunique() == 1:
-        #     re_ranked_ranking =  self.df_formated.model_rank.tolist()[:k_max]
-        # else:
-        counts = {k: 0 for k in range(len(self.p))}
+        counts = {i: 0 for i in range(len(self.p))}
         for k in range(1, k_max + 1):
             below_min = {
-                ai for ai, v in counts.items() if v < math.floor(k * self.p[ai])
+                attr
+                for attr, cnt in counts.items()
+                if cnt < math.floor(k * self.p[attr])
             }  # minimum requirement violation
             below_max = {
-                ai
-                for ai, v in counts.items()
-                if v >= math.floor(k * self.p[ai]) and v < math.ceil(k * self.p[ai])
+                attr
+                for attr, cnt in counts.items()
+                if cnt >= math.floor(k * self.p[attr])
+                and cnt < math.ceil(k * self.p[attr])
             }  # maximum requirement violation
             if below_min or below_max:
                 try:
-                    next_attri = self._process_violated_attributes(
-                        below_min, below_max, counts, method
+                    next_attr = self._process_violated_attributes(
+                        below_min, below_max, counts, k, algorithm
                     )
-                except KeyError:
-                    # KeyError: not enough required attribute items
-                    logger.debug("Lack of item of a required attribute.")
-                    # print("Lack of item of a required attribute.")
-                    rest_data: Dict[Tuple[int, int], int] = {
-                        k: v for k, v in self.data.items() if v not in re_ranked_ranking
-                    }
-                    next_attri = min(rest_data, key=lambda k: rest_data[k])[0]
+                except KeyError as ke:
+                    attr_short = ke.args[0][0]
+                    logger.debug(
+                        f"Lack of item of attribute {attr_short}, input a top rank item."
+                    )
+                    next_attr = self._input_top_rank(re_ranked_ranking)
             else:  # below_min and below_max are empty
-                next_attri = 0
-
-            re_ranked_ranking.append(self.data[(next_attri, counts[next_attri])])
-            counts[next_attri] += 1
+                next_attr = self._input_top_rank(re_ranked_ranking)
+            re_ranked_ranking.append(self.data[(next_attr, counts[next_attr])])
+            counts[next_attr] += 1
         if verbose:
             return self._get_verbose(re_ranked_ranking, k_max)
         else:
@@ -169,13 +221,14 @@ class Reranking:
     @staticmethod
     def _swap_dict_val(dic: Dict[int, Any], key_1: int, key_2: int) -> Dict[int, Any]:
         """Swaps values of two keys in a dictionary."""
+
         dic[key_1], dic[key_2] = dic[key_2], dic[key_1]
         return dic
 
-    def re_rank_const_sorting(
+    def re_rank_ics(
         self, k_max: int = 10, verbose: bool = False
     ) -> Union[List[int], pd.DataFrame]:
-        """method: Interval Constrained Sorting"""
+        """Implements `DetConstSort` algorithm."""
 
         re_ranked_ranking_dict = {}
         max_indices_dict = {}
@@ -191,17 +244,17 @@ class Reranking:
                 temp_min_counts[j] = math.floor(k * self.p[j])
 
             changed_mins = {
-                ai for ai, s in min_counts.items() if s < temp_min_counts[ai]
+                attr for attr, s in min_counts.items() if s < temp_min_counts[attr]
             }
             if len(changed_mins) != 0:
                 vals = {}
-                for ai in changed_mins:
-                    vals[ai] = self.data[(ai, counts[ai])]
+                for attr in changed_mins:
+                    vals[attr] = self.data[(attr, counts[attr])]
                 ord_changed_mins = np.asarray(
                     (sorted(vals.items(), key=lambda kv: (kv[1], kv[0]), reverse=True))
                 )[:, 0].tolist()
-                for ai in ord_changed_mins:
-                    re_ranked_ranking_dict[last_empty] = self.data[(ai, counts[ai])]
+                for attr in ord_changed_mins:
+                    re_ranked_ranking_dict[last_empty] = self.data[(attr, counts[attr])]
                     max_indices_dict[last_empty] = k
                     start = last_empty
                     while (
@@ -213,7 +266,7 @@ class Reranking:
                         self._swap_dict_val(max_indices_dict, start - 1, start)
                         self._swap_dict_val(re_ranked_ranking_dict, start - 1, start)
                         start -= 1
-                    counts[ai] += 1
+                    counts[attr] += 1
                     last_empty += 1
                 min_counts = temp_min_counts.copy()
 
