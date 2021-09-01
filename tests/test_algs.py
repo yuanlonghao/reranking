@@ -7,9 +7,6 @@ from reranking.algs import Reranking
 
 
 class TestReranking:
-    @pytest.fixture
-    def rankings(self) -> List[int]:
-        return [i for i in range(100)]
 
     @pytest.fixture
     def genders(self) -> List[str]:
@@ -46,12 +43,12 @@ class TestReranking:
     )
     def test_algorithms(
         self,
-        rankings: List[int],
         genders: List[Union[str, int]],
         distribution: Dict[Union[str, int], float],
         k_max: int,
         algorithm: str,
     ) -> None:
+        
         ranker = Reranking(genders, distribution)
         re_rankings = ranker.re_rank(algorithm=algorithm, k_max=k_max)
 

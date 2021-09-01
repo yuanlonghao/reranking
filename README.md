@@ -27,7 +27,7 @@ $ pip install reranking
 ```python
 from reranking.algs import Reranking
 r = Reranking(["f1", "f1", "f1", "f2", "f1", "f1", "f1", "f2"], {"f1": 0.5, "f2": 0.5})
-r.re_rank(k_max=4) # we want "f2" has equal proportion in top-4
+r.re_rank(k_max=4) # we want "f1" and "f2" have equal proportion in top-4
 ```
 The output is `[0, 3, 1, 7]` which is the re-ranked ranking of the top-4 items.
 
