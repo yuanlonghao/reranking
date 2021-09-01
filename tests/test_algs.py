@@ -7,7 +7,6 @@ from reranking.algs import Reranking
 
 
 class TestReranking:
-
     @pytest.fixture
     def genders(self) -> List[str]:
         np.random.seed(seed=43)
@@ -48,7 +47,7 @@ class TestReranking:
         k_max: int,
         algorithm: str,
     ) -> None:
-        
+
         ranker = Reranking(genders, distribution)
         re_rankings = ranker.re_rank(algorithm=algorithm, k_max=k_max)
 
