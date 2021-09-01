@@ -55,10 +55,10 @@ class TestReranking:
         re_features = [genders[i] for i in re_rankings]
         acutal_male = re_features.count("male")
         actual_female = re_features.count("female")
-        if k_max == 70:  # not enough item for female
-            acutal_male == k_max - genders.count("female")
-            actual_female = genders.count("female")
-        elif k_max == 100:  # result should be overall distribution
+        if k_max == 70:  # not enough items for female
+            assert acutal_male == k_max - genders.count("female")
+            assert actual_female == genders.count("female")
+        elif k_max == 100:  # result distribution should be the overall distribution
             assert acutal_male == genders.count("male")
             assert actual_female == genders.count("female")
         else:  # enough item for each attribute
