@@ -53,7 +53,7 @@ class Reranking:
             item_ids = [i for i in range(len(attributes))]
 
         self.distribution = distribution
-        self.df_formated = self._format_init(item_ids, attributes, distribution)
+        self.df_formatted = self._format_init(item_ids, attributes, distribution)
         self.data, self.p = self._format_alg_inputs()
 
     def re_rank(
@@ -226,12 +226,12 @@ class Reranking:
         data = {
             (attr, attr_rank): rank
             for attr, attr_rank, rank in zip(
-                self.df_formated.attribute_enc,
-                self.df_formated.attri_rank,
-                self.df_formated.model_rank,
+                self.df_formatted.attribute_enc,
+                self.df_formatted.attri_rank,
+                self.df_formatted.model_rank,
             )
         }
-        p = self.df_formated.drop_duplicates("attribute_enc").distr.tolist()
+        p = self.df_formatted.drop_duplicates("attribute_enc").distr.tolist()
         return data, p
 
     def _get_verbose(self, re_ranked_ranking: List[int]) -> pd.DataFrame:
@@ -242,7 +242,7 @@ class Reranking:
                 "re_rank": [i for i in range(len(re_ranked_ranking))],
             }
         )
-        df_verbose = df_verbose.merge(self.df_formated, on="model_rank", how="left")
+        df_verbose = df_verbose.merge(self.df_formatted, on="model_rank", how="left")
         df_verbose.drop(["attribute_enc", "attri_rank"], axis=1, inplace=True)
 
         return df_verbose
