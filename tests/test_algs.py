@@ -18,24 +18,25 @@ class TestReranking:
     @pytest.mark.parametrize(
         "distribution, k_max, algorithm",
         [
+            # test init
+            ({"female": 0.5}, 43, "det_greedy"),
+            ({"male": 1.0}, 43, "det_greedy"),
+            # test performce
             ({"female": 0.5, "male": 0.5}, 10, "det_greedy"),
             ({"female": 0.0, "male": 1.0}, 10, "det_greedy"),
-            ({"female": 0.5, "male": 0.5}, 60, "det_greedy"),
-            ({"female": 0.5, "male": 0.5}, 70, "det_greedy"),
-            ({"female": 0.5, "male": 0.5}, 100, "det_greedy"),
             ({"female": 0.5, "male": 0.5}, 10, "det_cons"),
             ({"female": 0.0, "male": 1.0}, 10, "det_cons"),
-            ({"female": 0.5, "male": 0.5}, 60, "det_cons"),
-            ({"female": 0.5, "male": 0.5}, 70, "det_cons"),
-            ({"female": 0.5, "male": 0.5}, 100, "det_cons"),
             ({"female": 0.5, "male": 0.5}, 10, "det_relaxed"),
             ({"female": 0.0, "male": 1.0}, 10, "det_relaxed"),
-            ({"female": 0.5, "male": 0.5}, 60, "det_relaxed"),
-            ({"female": 0.5, "male": 0.5}, 70, "det_relaxed"),
-            ({"female": 0.5, "male": 0.5}, 100, "det_relaxed"),
             ({"female": 0.5, "male": 0.5}, 10, "det_const_sort"),
             ({"female": 0.0, "male": 1.0}, 10, "det_const_sort"),
-            ({"female": 0.5, "male": 0.5}, 60, "det_const_sort"),
+            # test edge conditions
+            ({"female": 0.5, "male": 0.5}, 70, "det_greedy"),
+            ({"female": 0.5, "male": 0.5}, 100, "det_greedy"),
+            ({"female": 0.5, "male": 0.5}, 70, "det_cons"),
+            ({"female": 0.5, "male": 0.5}, 100, "det_cons"),
+            ({"female": 0.5, "male": 0.5}, 70, "det_relaxed"),
+            ({"female": 0.5, "male": 0.5}, 100, "det_relaxed"),
             ({"female": 0.5, "male": 0.5}, 70, "det_const_sort"),
             ({"female": 0.5, "male": 0.5}, 100, "det_const_sort"),
         ],
@@ -54,7 +55,11 @@ class TestReranking:
         re_features = [genders[i] for i in re_rankings]
         acutal_male = re_features.count("male")
         actual_female = re_features.count("female")
-        if k_max == 70:  # not enough items for female
+
+        if k_max == 43:  # not enough input distribution
+            assert len(ranker.distr) == 2
+            assert sum(ranker.distr.values()) == 1
+        elif k_max == 70:  # not enough items for female
             assert acutal_male == k_max - genders.count("female")
             assert actual_female == genders.count("female")
         elif k_max == 100:  # result distribution should be the overall distribution
