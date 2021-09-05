@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from reranking.metrics import infeasible, kl_divergence, min_max_skew, ndkl, skew
+from reranking.metrics import infeasible, kld, kld_at_k, min_max_skew, ndkl, skew
 
 
 class TestMetrics:
@@ -26,8 +26,15 @@ class TestMetrics:
     ) -> None:
         isinstance(min_max_skew(item_attributes, dict_p, 3, min_max=min_max), float)
 
-    def test_kl_divergence(self) -> None:
-        isinstance(kl_divergence([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1]), float)
+    def test_kld(self) -> None:
+        isinstance(kld([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1]), float)
+
+    def test_kld_at_k(
+        self,
+        item_attributes: List[Any],
+        dict_p: Dict[Any, float],
+    ) -> None:
+        isinstance(kld_at_k(item_attributes, dict_p), float)
 
     def test_ndkl(
         self,

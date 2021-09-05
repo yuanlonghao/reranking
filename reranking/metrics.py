@@ -48,15 +48,36 @@ def min_max_skew(
         raise ValueError("Not MinSkew or MaxSkew.")
 
 
-def kl_divergence(distri_1: List[float], distri_2: List[float]) -> float:
+def kld(distr_1: List[float], distr_2: List[float]) -> float:
     """
-    distri_1, distri_2: two list of distribution values
+    distr_1, distr_2: two list of distribution values
     """
+
     vals = []
-    for i, j in zip(distri_1, distri_2):
+    for i, j in zip(distr_1, distr_2):
         if i * j != 0:  # skip any 0 values
             vals.append(i * math.log(i / j))
     return sum(vals)
+
+
+def kld_at_k(
+    item_attributes: List[Any], dict_p: Dict[Any, float], k: Optional[int] = None
+) -> float:
+
+    if k is None:
+        k = len(item_attributes)
+
+    vc = pd.Series(item_attributes[:k]).value_counts(normalize=True).to_dict()
+    distr_1 = []
+    distr_2 = []
+    for attr in dict_p:
+        try:
+            distr_1.append(vc[attr])
+        except KeyError:
+            distr_1.append(0)
+        distr_2.append(dict_p[attr])
+    res = kld(distr_1, distr_2)
+    return res
 
 
 def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
@@ -70,20 +91,8 @@ def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
 
     Z = np.sum(1 / (np.log2(np.arange(1, n_items + 1) + 1)))
     total = 0.0
-
-    for i in range(1, n_items + 1):
-        value_counts = (
-            pd.Series(item_attributes[:i]).value_counts(normalize=True).to_dict()
-        )
-        distr_1 = []
-        distr_2 = []
-        for attr in dict_p:
-            try:
-                distr_1.append(value_counts[attr])
-            except KeyError:
-                distr_1.append(0)
-            distr_2.append(dict_p[attr])
-        total += (1 / math.log2(i + 1)) * kl_divergence(distr_1, distr_2)
+    for k in range(1, n_items + 1):
+        total += (1 / math.log2(k + 1)) * kld_at_k(item_attributes, dict_p, k)
     res: float = (1 / Z) * total
     return res
 
