@@ -19,14 +19,14 @@ def skew(
     """
     count = item_attributes[:k].count(object_attribute)
     propotion = count / k
-    s = math.log(propotion + 1e-10 / (desired_proportion + 1e-10))
+    s = math.log((propotion + 1e-10) / (desired_proportion + 1e-10))
     return s
 
 
 def min_max_skew(
     item_attributes: List[Union[str, int]],
     dict_p: Dict[Union[str, int], float],
-    k: int,
+    k: Optional[int],
     min_max: str = "min",
 ) -> float:
     """
@@ -34,13 +34,18 @@ def min_max_skew(
     dict_p:  Dict[name/index of the attribute, desired_proportion]
     k: top k ranked results
     """
+
+    if k is None:
+        k = len(item_attributes)
     skew_list: List[float] = []
     for object_attribute, desired_proportion in dict_p.items():
         skew_list.append(skew(item_attributes, object_attribute, desired_proportion, k))
     if min_max == "min":
         return min(skew_list)
-    else:
+    elif min_max == "max":
         return max(skew_list)
+    else:
+        raise ValueError("Not MinSkew or MaxSkew.")
 
 
 def kl_divergence(distri_1: List[float], distri_2: List[float]) -> float:
@@ -49,7 +54,7 @@ def kl_divergence(distri_1: List[float], distri_2: List[float]) -> float:
     """
     vals = []
     for i, j in zip(distri_1, distri_2):
-        if i * j != 0:
+        if i * j != 0:  # skip any 0 values
             vals.append(i * math.log(i / j))
     return sum(vals)
 
@@ -84,19 +89,6 @@ def ndkl(
     return res
 
 
-def dcg_at_k(r: List[int], k: int) -> float:
-    r_ = np.asfarray(r)[:k]
-    dcg: float = r_[0] + np.sum(r_[1:] / np.log2(np.arange(2, r_.size + 1)))
-    return dcg
-
-
-def ndcg_at_k(r: List[int], k: int) -> float:
-    dcg_max = dcg_at_k(sorted(r, reverse=True), k)
-    if not dcg_max:
-        return 0.0
-    return dcg_at_k(r, k) / dcg_max
-
-
 def infeasible(
     item_attributes: List[Union[str, int]],
     dict_p: Dict[Union[str, int], float],
@@ -108,6 +100,8 @@ def infeasible(
     infeasible_index: from 1 to k, items saitisfy violation condition.
     infeasible_count: from 1 to k, count of insufficient attributes by violation condition.
     """
+
+    # (this method is not general used though...)
     if k_max is None:
         k_max = len(item_attributes)
     infeasible_index = 0

@@ -2,15 +2,7 @@ from typing import Dict, List, Union
 
 import pytest
 
-from reranking.metrics import (
-    dcg_at_k,
-    infeasible,
-    kl_divergence,
-    min_max_skew,
-    ndcg_at_k,
-    ndkl,
-    skew,
-)
+from reranking.metrics import infeasible, kl_divergence, min_max_skew, ndkl, skew
 
 
 class TestMetrics:
@@ -43,10 +35,6 @@ class TestMetrics:
         dict_p: Dict[Union[str, int], float],
     ) -> None:
         isinstance(ndkl(item_attributes, dict_p), float)
-
-    def test_ndcg_at_k(self) -> None:
-        isinstance(dcg_at_k([3, 1, 4, 5, 0, 2], 3), float)
-        isinstance(ndcg_at_k([3, 1, 4, 5, 0, 2], 3), float)
 
     def test_infeasible(
         self,
