@@ -26,7 +26,7 @@ def skew(
 def min_max_skew(
     item_attributes: List[Union[str, int]],
     dict_p: Dict[Union[str, int], float],
-    k: Optional[int],
+    k: Optional[int] = None,
     min_max: str = "min",
 ) -> float:
     """
