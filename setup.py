@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="reranking",
-    version="0.2.2",
+    version="0.2.3",
     author="Longhao Yuan",
     author_email="yuanlonghao1013@gmail.com",
     long_description=long_description,
