@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -43,12 +43,11 @@ class TestReranking:
     )
     def test_algorithms(
         self,
-        genders: List[Union[str, int]],
-        distribution: Dict[Union[str, int], float],
+        genders: List[Any],
+        distribution: Dict[Any, float],
         k_max: int,
         algorithm: str,
     ) -> None:
-
         ranker = Reranking(genders, distribution)
         re_rankings = ranker.re_rank(algorithm=algorithm, k_max=k_max)
 

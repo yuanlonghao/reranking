@@ -27,16 +27,19 @@ class Reranking:
 
     def __init__(
         self,
-        attributes: List[Union[str, int]],
-        distribution: Dict[Union[str, int], float],
+        attributes: List[Any],
+        distribution: Dict[Any, float],
         item_ids: Optional[List[int]] = None,
     ) -> None:
+        self.attr = attributes.copy()
+        self.distr = distribution.copy()
+        self._process_init()
 
-        self.attr, self.distr, self.item_ids = self._process_init_inputs(
-            attributes, distribution, item_ids
-        )
-        self.df_formatted = self._format_init()
-        self.data, self.p = self._format_alg_inputs()
+        if item_ids is None:
+            item_ids = [i for i in range(len(self.attr))]
+        self.item_ids = item_ids
+
+        self.df_formatted, self.data, self.p = self._format_init()
 
     def re_rank(
         self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
@@ -117,14 +120,12 @@ class Reranking:
             temp_min_counts = {
                 idx: math.floor(k * self.p[idx]) for idx in range(len(self.p))
             }
-            changed_mins = {
-                attr for attr, s in min_counts.items() if s < temp_min_counts[attr]
-            }
+            changed_mins = {a for a, s in min_counts.items() if s < temp_min_counts[a]}
             if changed_mins:
                 vals = {}
-                for attr in changed_mins:
+                for a in changed_mins:
                     try:
-                        vals[attr] = self.data[(attr, counts[attr])]
+                        vals[a] = self.data[(a, counts[a])]
                     except KeyError:  # not enough item of desired attribute
                         pass
                 if vals:
@@ -137,10 +138,8 @@ class Reranking:
                             )
                         )
                     )[:, 0].tolist()
-                    for attr in ord_changed_mins:
-                        re_ranked_ranking_dict[last_empty] = self.data[
-                            (attr, counts[attr])
-                        ]
+                    for a in ord_changed_mins:
+                        re_ranked_ranking_dict[last_empty] = self.data[(a, counts[a])]
                         max_indices_dict[last_empty] = k
                         start = last_empty
                         while (
@@ -154,7 +153,7 @@ class Reranking:
                                 re_ranked_ranking_dict, start - 1, start
                             )
                             start -= 1
-                        counts[attr] += 1
+                        counts[a] += 1
                         last_empty += 1
                     min_counts = temp_min_counts.copy()
 
@@ -164,17 +163,12 @@ class Reranking:
         else:
             return re_ranked_ranking
 
-    @staticmethod
-    def _process_init_inputs(
-        attributes: List[Union[str, int]],
-        distribution: Dict[Union[str, int], float],
-        item_ids: Optional[List[int]],
-    ) -> Tuple[List[Union[str, int]], Dict[Union[str, int], float], List[int]]:
+    def _process_init(self) -> None:
 
-        attribute_unique = list(set(attributes))
-        attribute_non_exist = [i for i in distribution if i not in attribute_unique]
-        attribute_non_desired = [i for i in attribute_unique if i not in distribution]
-        distri_sum = sum(distribution.values())
+        attribute_unique = list(set(self.attr))
+        attribute_non_exist = [i for i in self.distr if i not in attribute_unique]
+        attribute_non_desired = [i for i in attribute_unique if i not in self.distr]
+        distri_sum = sum(self.distr.values())
 
         if attribute_non_exist:
             raise ValueError(
@@ -182,21 +176,25 @@ class Reranking:
             )
         if attribute_non_desired and abs(distri_sum - 1) < 1e-6:
             # Set non-specified attribute distribution value as 0
-            for attr in attribute_non_desired:
-                distribution[attr] = 0.0
+            for a in attribute_non_desired:
+                self.distr[a] = 0.0
         if distri_sum < 1 - 1e-6:
             # Set non-specified attribute name as "masked", values sum as 1
-            attributes = [i if i in distribution else "masked" for i in attributes]
-            distribution["masked"] = 1 - distri_sum
+            self.attr = [i if i in self.distr else "masked" for i in self.attr]
+            self.distr["masked"] = 1 - distri_sum
         if distri_sum > 1 + 1e-6:
             raise ValueError("Sum of desired attribute distribution larger than 1.")
 
-        if item_ids is None:
-            item_ids = [i for i in range(len(attributes))]
+    def _format_init(
+        self,
+    ) -> Tuple[pd.DataFrame, Dict[Tuple[int, int], int], List[float]]:
+        """Formats init inputs.
 
-        return attributes, distribution, item_ids
-
-    def _format_init(self) -> pd.DataFrame:
+        Returns:
+            df: dataframe contains processed information.
+            data: in {(attribute_index, ranking in the attribute): overall ranking, ...} format.
+            p: List[float] of distributions of each attribute.
+        """
 
         rankings = [i for i in range(len(self.item_ids))]
         factorized_attribute = pd.factorize(self.attr)[0]
@@ -222,26 +220,17 @@ class Reranking:
         )
         df = df.merge(df_distr, on="attribute", how="left")
 
-        return df
-
-    def _format_alg_inputs(self) -> Tuple[Dict[Tuple[int, int], int], List[float]]:
-        """Formats algorithm inputs.
-
-        Returns:
-            data: in {(attribute_index, ranking in the attribute): overall ranking, ...} format.
-            p: List[float] of distributions of each attribute.
-        """
-
         data = {
-            (attr, attr_rank): rank
-            for attr, attr_rank, rank in zip(
-                self.df_formatted.attribute_enc,
-                self.df_formatted.attri_rank,
-                self.df_formatted.model_rank,
+            (a, a_rank): rank
+            for a, a_rank, rank in zip(
+                df.attribute_enc,
+                df.attri_rank,
+                df.model_rank,
             )
         }
-        p = self.df_formatted.drop_duplicates("attribute_enc").distr.tolist()
-        return data, p
+        p = df.drop_duplicates("attribute_enc").distr.tolist()
+
+        return df, data, p
 
     def _get_verbose(self, re_ranked_ranking: List[int]) -> pd.DataFrame:
 

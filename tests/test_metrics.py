@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 import pytest
 
@@ -7,21 +7,21 @@ from reranking.metrics import infeasible, kl_divergence, min_max_skew, ndkl, ske
 
 class TestMetrics:
     @pytest.fixture
-    def item_attributes(self) -> List[Union[str, int]]:
+    def item_attributes(self) -> List[Any]:
         return [1, 1, 2, 3, 4]
 
     @pytest.fixture
-    def dict_p(self) -> Dict[Union[str, int], float]:
+    def dict_p(self) -> Dict[Any, float]:
         return {1: 0.5, 2: 0.2, 3: 0.1, 4: 0.3}
 
-    def test_skew(self, item_attributes: List[Union[str, int]]) -> None:
+    def test_skew(self, item_attributes: List[Any]) -> None:
         isinstance(skew(item_attributes, 1, 0.5, 3), float)
 
     @pytest.mark.parametrize("min_max", ["min", "max"])
     def test_min_max_skew(
         self,
-        item_attributes: List[Union[str, int]],
-        dict_p: Dict[Union[str, int], float],
+        item_attributes: List[Any],
+        dict_p: Dict[Any, float],
         min_max: str,
     ) -> None:
         isinstance(min_max_skew(item_attributes, dict_p, 3, min_max=min_max), float)
@@ -31,15 +31,15 @@ class TestMetrics:
 
     def test_ndkl(
         self,
-        item_attributes: List[Union[str, int]],
-        dict_p: Dict[Union[str, int], float],
+        item_attributes: List[Any],
+        dict_p: Dict[Any, float],
     ) -> None:
         isinstance(ndkl(item_attributes, dict_p), float)
 
     def test_infeasible(
         self,
-        item_attributes: List[Union[str, int]],
-        dict_p: Dict[Union[str, int], float],
+        item_attributes: List[Any],
+        dict_p: Dict[Any, float],
     ) -> None:
         infeasible_index, infeasible_count = infeasible(item_attributes, dict_p, 5)
         isinstance(infeasible_index, int)
