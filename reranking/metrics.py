@@ -1,13 +1,13 @@
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 
 def skew(
-    item_attributes: List[Union[str, int]],
-    object_attribute: Union[str, int],
+    item_attributes: List[Any],
+    object_attribute: Any,
     desired_proportion: float,
     k: int,
 ) -> float:
@@ -24,8 +24,8 @@ def skew(
 
 
 def min_max_skew(
-    item_attributes: List[Union[str, int]],
-    dict_p: Dict[Union[str, int], float],
+    item_attributes: List[Any],
+    dict_p: Dict[Any, float],
     k: Optional[int] = None,
     min_max: str = "min",
 ) -> float:
@@ -59,9 +59,7 @@ def kl_divergence(distri_1: List[float], distri_2: List[float]) -> float:
     return sum(vals)
 
 
-def ndkl(
-    item_attributes: List[Union[str, int]], dict_p: Dict[Union[str, int], float]
-) -> float:
+def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
     """
     Normalized discounted cumulative KL-divergence (NDKL)
 
@@ -77,21 +75,22 @@ def ndkl(
         value_counts = (
             pd.Series(item_attributes[:i]).value_counts(normalize=True).to_dict()
         )
-        distri_1 = []
+        distr_1 = []
+        distr_2 = []
         for attr in dict_p:
             try:
-                distri_1.append(value_counts[attr])
+                distr_1.append(value_counts[attr])
             except KeyError:
-                distri_1.append(0)
-        distri_2 = list(dict_p.values())
-        total += (1 / math.log2(i + 1)) * kl_divergence(distri_1, distri_2)
+                distr_1.append(0)
+            distr_2.append(dict_p[attr])
+        total += (1 / math.log2(i + 1)) * kl_divergence(distr_1, distr_2)
     res: float = (1 / Z) * total
     return res
 
 
 def infeasible(
-    item_attributes: List[Union[str, int]],
-    dict_p: Dict[Union[str, int], float],
+    item_attributes: List[Any],
+    dict_p: Dict[Any, float],
     k_max: Optional[int] = None,
 ) -> Tuple[int, int]:
 
