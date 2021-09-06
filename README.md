@@ -1,4 +1,4 @@
-# reranking for fairness/personalization recommendation and search
+# Reranking: fairness/personalization for recommendation and search
 
 [![Python](https://img.shields.io/badge/python-3.6%7C3.7%7C3.8%7C3.9-red?logo=Python&logoColor=white)](https://www.python.org)
 [![PyPI](https://img.shields.io/pypi/v/reranking?color=green)](https://pypi.org/project/reranking/)
