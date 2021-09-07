@@ -2,7 +2,15 @@ from typing import Any, Dict, List
 
 import pytest
 
-from reranking.metrics import infeasible, kld, kld_at_k, min_max_skew, ndkl, skew
+from reranking.metrics import (
+    cal_skew,
+    infeasible,
+    kld,
+    cal_kld,
+    min_max_skew,
+    ndkl,
+    skew,
+)
 
 
 class TestMetrics:
@@ -14,8 +22,11 @@ class TestMetrics:
     def dict_p(self) -> Dict[Any, float]:
         return {1: 0.5, 2: 0.2, 3: 0.1, 4: 0.3}
 
-    def test_skew(self, item_attributes: List[Any]) -> None:
-        isinstance(skew(item_attributes, 1, 0.5, 3), float)
+    def test_skew(self) -> None:
+        isinstance(skew(0.5, 0.5), float)
+
+    def test_cal_skew(self, item_attributes: List[Any]) -> None:
+        isinstance(cal_skew(item_attributes, 1, 0.5, 3), float)
 
     @pytest.mark.parametrize("min_max", ["min", "max"])
     def test_min_max_skew(
@@ -34,7 +45,7 @@ class TestMetrics:
         item_attributes: List[Any],
         dict_p: Dict[Any, float],
     ) -> None:
-        isinstance(kld_at_k(item_attributes, dict_p), float)
+        isinstance(cal_kld(item_attributes, dict_p), float)
 
     def test_ndkl(
         self,

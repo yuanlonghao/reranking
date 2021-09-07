@@ -194,9 +194,6 @@ class Reranking:
         attr_in_item_in_distr = set(self.item_attr) & set(self.distr)
         attr_in_item_not_distr = set(self.item_attr) - attr_in_item_in_distr
         attr_in_distr_not_item = set(self.distr) - attr_in_item_in_distr
-        print(
-            f"{attr_in_item_in_distr}{attr_in_item_not_distr}{attr_in_distr_not_item}"
-        )
         if attr_in_item_in_distr:
             if attr_in_distr_not_item and not attr_in_item_not_distr:
                 raise NameError(

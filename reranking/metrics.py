@@ -5,7 +5,14 @@ import numpy as np
 import pandas as pd
 
 
-def skew(
+def skew(p_1: float, p_2: float) -> float:
+    """
+    p_1, p_2: two probability of the same attribute in two distributions
+    """
+    return math.log((p_1 + 1e-10) / (p_2 + 1e-10))
+
+
+def cal_skew(
     item_attributes: List[Any],
     object_attribute: Any,
     desired_proportion: float,
@@ -19,7 +26,7 @@ def skew(
     """
     count = item_attributes[:k].count(object_attribute)
     propotion = count / k
-    s = math.log((propotion + 1e-10) / (desired_proportion + 1e-10))
+    s = skew(propotion, desired_proportion)
     return s
 
 
@@ -39,7 +46,9 @@ def min_max_skew(
         k = len(item_attributes)
     skew_list: List[float] = []
     for object_attribute, desired_proportion in dict_p.items():
-        skew_list.append(skew(item_attributes, object_attribute, desired_proportion, k))
+        skew_list.append(
+            cal_skew(item_attributes, object_attribute, desired_proportion, k)
+        )
     if min_max == "min":
         return min(skew_list)
     elif min_max == "max":
@@ -60,7 +69,7 @@ def kld(distr_1: List[float], distr_2: List[float]) -> float:
     return sum(vals)
 
 
-def kld_at_k(
+def cal_kld(
     item_attributes: List[Any], dict_p: Dict[Any, float], k: Optional[int] = None
 ) -> float:
 
@@ -92,7 +101,7 @@ def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
     Z = np.sum(1 / (np.log2(np.arange(1, n_items + 1) + 1)))
     total = 0.0
     for k in range(1, n_items + 1):
-        total += (1 / math.log2(k + 1)) * kld_at_k(item_attributes, dict_p, k)
+        total += (1 / math.log2(k + 1)) * cal_kld(item_attributes, dict_p, k)
     res: float = (1 / Z) * total
     return res
 
