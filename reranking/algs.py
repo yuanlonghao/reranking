@@ -7,36 +7,43 @@ import pandas as pd
 
 logger = getLogger(__name__)
 
-
+## TODO: deal with this situation: attributes = ["f1", ["f1", "f2"], "f2", ...]
 class Reranking:
     """
     Re-ranking algorithms in the paper: Fairness-Aware Ranking in Search
     & Recommendation Systems with Application to LinkedIn Talent Search
 
     Attributes:
-        attributes:
-            the attributes corresponding to the each item ranked by
+        item_attr:
+            The attributes corresponding to the each item ranked by
             recommendation system or search engine, from top to bottom.
-        distribution:
-            the disired distribution for each attribute
+        distr:
+            The disired distribution for each attribute.
         item_ids:
-            the item ids, optional input
+            The item ids, optional input.
+        df_formatted:
+            Dataframe containing all the processed information.
+        data:
+            In format of {(`attribute index`, `rank in the attribute`): overall rank}.
+        p:
+            Desired distribution in list format.
+
     Usage:
         Call `re_rank` method.
     """
 
     def __init__(
         self,
-        attributes: List[Any],
+        item_attributes: List[Any],
         distribution: Dict[Any, float],
         item_ids: Optional[List[int]] = None,
     ) -> None:
-        self.attr = attributes.copy()
+        self.item_attr = item_attributes.copy()
         self.distr = distribution.copy()
         self._process_init()
 
         if item_ids is None:
-            item_ids = [i for i in range(len(self.attr))]
+            item_ids = [i for i in range(len(self.item_attr))]
         self.item_ids = item_ids
 
         self.df_formatted, self.data, self.p = self._format_init()
@@ -164,26 +171,55 @@ class Reranking:
             return re_ranked_ranking
 
     def _process_init(self) -> None:
+        """
+        Remark:
+        set_1: attributes in item and distr
+        set_2: attributes in item but not in distr
+        set_3: attributes in distr but not in item
 
-        attribute_unique = list(set(self.attr))
-        attribute_non_exist = [i for i in self.distr if i not in attribute_unique]
-        attribute_non_desired = [i for i in attribute_unique if i not in self.distr]
+        Process logic:
+        - Sum of distribution larger than 1: ValueError
+        - set_1 False: NameError
+        - set_1 True:
+            - set_2 True, set_3 True: mask set_2 in item and set_3 in distr
+            - set_2 False, set_3 True: NameError (distr contains item, lack attribute in item)
+            - set_2 False, set_3 False: pass (item set equals distr set)
+            - set_2 True, set_3 False: pass (item contains distr, no need to mask)
+        """
+
         distri_sum = sum(self.distr.values())
-
-        if attribute_non_exist:
-            raise ValueError(
-                f"Wrong attribute name in desired distribution: {attribute_non_exist}."
-            )
-        if attribute_non_desired and abs(distri_sum - 1) < 1e-6:
-            # Set non-specified attribute distribution value as 0
-            for a in attribute_non_desired:
-                self.distr[a] = 0.0
-        if distri_sum < 1 - 1e-6:
-            # Set non-specified attribute name as "masked", values sum as 1
-            self.attr = [i if i in self.distr else "masked" for i in self.attr]
-            self.distr["masked"] = 1 - distri_sum
         if distri_sum > 1 + 1e-6:
             raise ValueError("Sum of desired attribute distribution larger than 1.")
+
+        attr_in_item_in_distr = set(self.item_attr) & set(self.distr)
+        attr_in_item_not_distr = set(self.item_attr) - attr_in_item_in_distr
+        attr_in_distr_not_item = set(self.distr) - attr_in_item_in_distr
+        print(
+            f"{attr_in_item_in_distr}{attr_in_item_not_distr}{attr_in_distr_not_item}"
+        )
+        if attr_in_item_in_distr:
+            if attr_in_distr_not_item and not attr_in_item_not_distr:
+                raise NameError(
+                    f"Wrong attribute name in distribution: {attr_in_distr_not_item}."
+                )
+            elif attr_in_distr_not_item and attr_in_item_not_distr:
+                self.item_attr = [
+                    "masked" if i in attr_in_item_not_distr else i
+                    for i in self.item_attr
+                ]
+                valid_distr = {
+                    k: v
+                    for k, v in self.distr.items()
+                    if k not in attr_in_distr_not_item
+                }
+                valid_distr["masked"] = 1.0 - sum(valid_distr.values())
+                self.distr = valid_distr
+            else:
+                pass
+        else:
+            raise NameError(
+                "Item attribute names and distribution names have no intersection."
+            )
 
     def _format_init(
         self,
@@ -197,11 +233,11 @@ class Reranking:
         """
 
         rankings = [i for i in range(len(self.item_ids))]
-        factorized_attribute = pd.factorize(self.attr)[0]
+        factorized_attribute = pd.factorize(self.item_attr)[0]
         df = pd.DataFrame(
             {
                 "item_id": self.item_ids,
-                "attribute": self.attr,
+                "attribute": self.item_attr,
                 "attribute_enc": factorized_attribute,
                 "model_rank": rankings,
             }

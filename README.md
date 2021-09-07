@@ -7,7 +7,7 @@
 
 ***reranking*** provides algorithms to re-rank the items to any desired item attribute distribution.
 
-This package can be used in the post-processing step of recommendation system or search engine.
+This package can be used as a post-processing modular of recommendation system or search engine.
 
 Inspired by paper [Fairness-Aware Ranking in Search & Recommendation Systems with Application to LinkedIn Talent Search](https://dl.acm.org/doi/10.1145/3292500.3330691).
 

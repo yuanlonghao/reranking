@@ -16,11 +16,50 @@ class TestReranking:
         return genders
 
     @pytest.mark.parametrize(
+        "item_attributes, distribution",
+        [
+            ([1, 2, 3], {1: 0.3, 2: 0.4, 3: 0.5}),  # sum of distibution larger than 1
+            ([1, 2, 3], {4: 0.3, 5: 0.4, 6: 0.3}),  # no intersection
+            ([4, 5], {4: 0.3, 5: 0.4, 6: 0.3}),  # distribution attr contains item attr
+        ],
+    )
+    def test_class_raise_exception(
+        self, item_attributes: List[Any], distribution: Dict[Any, float]
+    ) -> None:
+        with pytest.raises((NameError, ValueError)):
+            Reranking(item_attributes, distribution)
+
+    @pytest.mark.parametrize(
+        "item_attributes, distribution, expected_item_attr, expected_distr_key",
+        [
+            ([2, 4, 5], {4: 0.3, 5: 0.4, 6: 0.3}, ["masked", 4, 5], ["masked", 4, 5]),
+            ([4, 5, 6], {4: 0.3, 5: 0.4, 6: 0.3}, [4, 5, 6], [4, 5, 6]),
+            (
+                [4, 5, 6, 7],
+                {4: 0.3, 5: 0.4, 6: 0.3},
+                [4, 5, 6, 7],
+                [
+                    4,
+                    5,
+                    6,
+                ],
+            ),
+        ],
+    )
+    def test_class_init(
+        self,
+        item_attributes: List[Any],
+        distribution: Dict[Any, float],
+        expected_item_attr: List[Any],
+        expected_distr_key: List[Any],
+    ) -> None:
+        r = Reranking(item_attributes, distribution)
+        assert set(expected_item_attr) == set(r.item_attr)
+        assert set(expected_distr_key) == set(r.distr)
+
+    @pytest.mark.parametrize(
         "distribution, k_max, algorithm",
         [
-            # test init
-            ({"female": 0.5}, 43, "det_greedy"),
-            ({"male": 1.0}, 43, "det_greedy"),
             # test performce
             ({"female": 0.5, "male": 0.5}, 10, "det_greedy"),
             ({"female": 0.0, "male": 1.0}, 10, "det_greedy"),
@@ -55,10 +94,7 @@ class TestReranking:
         acutal_male = re_features.count("male")
         actual_female = re_features.count("female")
 
-        if k_max == 43:  # not enough input distribution
-            assert len(ranker.distr) == 2
-            assert sum(ranker.distr.values()) == 1
-        elif k_max == 70:  # not enough items for female
+        if k_max == 70:  # not enough items for female
             assert acutal_male == k_max - genders.count("female")
             assert actual_female == genders.count("female")
         elif k_max == 100:  # result distribution should be the overall distribution
