@@ -21,6 +21,9 @@ class Reranking:
             or search engine, from top to bottom.
         distr:
             The disired distribution for each attribute.
+        max_n_attribute:
+            The maximum number of different values of the attributes in distribution. 
+            The number is achieved by merging the attributes with the lowest probabilities.
         df_formatted:
             Dataframe containing all the processed information.
         data:
@@ -38,7 +41,6 @@ class Reranking:
     ) -> None:
 
         self.max_n_attribute = max_n_attribute
-
         self.item_attr, self.distr = self._process_init(
             item_attribute, desired_distribution
         )
