@@ -7,7 +7,7 @@ import pandas as pd
 
 def skew(p_1: float, p_2: float) -> float:
     """
-    p_1, p_2: two probability of the same attribute in two distributions
+    p_1, p_2: two probabilities of the same attribute in two distributions
     """
     return math.log((p_1 + 1e-10) / (p_2 + 1e-10))
 
@@ -30,16 +30,27 @@ def cal_skew(
     return s
 
 
-def min_max_skew(
+def skews(distr_1: List[float], distr_2: List[float]) -> Tuple[float, float, float]:
+    """
+    Calculates min, max, absolute mean skew of all the attributes.
+
+    distr_1, distr_2: two list of distribution values
+    """
+    skews = [0.0]  # sometimes distr_1 and distr_2 has no intersection
+    for i, j in zip(distr_1, distr_2):
+        if i * j != 0:  # skip any 0 values
+            skews.append(math.log((i + 1e-10) / (j + 1e-10)))
+    skews_abs = [abs(i) for i in skews]
+    return min(skews), max(skews), sum(skews_abs) / len(skews_abs)
+
+
+def cal_skews(
     item_attributes: List[Any],
     dict_p: Dict[Any, float],
     k: Optional[int] = None,
-    min_max: str = "min",
-) -> float:
+) -> Tuple[float, float, float]:
     """
-    item_attributes: the attribute of each recommended item
-    dict_p:  Dict[name/index of the attribute, desired_proportion]
-    k: top k ranked results
+    Calculates min, max, absolute mean skew of all the attributes.
     """
 
     if k is None:
@@ -49,12 +60,8 @@ def min_max_skew(
         skew_list.append(
             cal_skew(item_attributes, object_attribute, desired_proportion, k)
         )
-    if min_max == "min":
-        return min(skew_list)
-    elif min_max == "max":
-        return max(skew_list)
-    else:
-        raise ValueError("Not MinSkew or MaxSkew.")
+    skew_list_abs = [abs(i) for i in skew_list]
+    return min(skew_list), max(skew_list), sum(skew_list_abs) / len(skew_list_abs)
 
 
 def kld(distr_1: List[float], distr_2: List[float]) -> float:
@@ -89,7 +96,7 @@ def cal_kld(
     return res
 
 
-def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
+def cal_ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
     """
     Normalized discounted cumulative KL-divergence (NDKL)
 
@@ -106,7 +113,7 @@ def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
     return res
 
 
-def infeasible(
+def cal_infeasible(
     item_attributes: List[Any],
     dict_p: Dict[Any, float],
     k_max: Optional[int] = None,

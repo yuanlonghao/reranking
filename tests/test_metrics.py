@@ -3,13 +3,14 @@ from typing import Any, Dict, List
 import pytest
 
 from reranking.metrics import (
-    cal_skew,
-    infeasible,
-    kld,
+    cal_infeasible,
     cal_kld,
-    min_max_skew,
-    ndkl,
+    cal_ndkl,
+    cal_skew,
+    cal_skews,
+    kld,
     skew,
+    skews,
 )
 
 
@@ -28,37 +29,40 @@ class TestMetrics:
     def test_cal_skew(self, item_attributes: List[Any]) -> None:
         isinstance(cal_skew(item_attributes, 1, 0.5, 3), float)
 
-    @pytest.mark.parametrize("min_max", ["min", "max"])
-    def test_min_max_skew(
+    def test_skews(self) -> None:
+        actual = skews([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1])
+        all(isinstance(i, float) for i in actual)
+
+    def test_cal_skews(
         self,
         item_attributes: List[Any],
         dict_p: Dict[Any, float],
-        min_max: str,
     ) -> None:
-        isinstance(min_max_skew(item_attributes, dict_p, 3, min_max=min_max), float)
+        actual = cal_skews(item_attributes, dict_p, k=3)
+        all(isinstance(i, float) for i in actual)
 
     def test_kld(self) -> None:
         isinstance(kld([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1]), float)
 
-    def test_kld_at_k(
+    def test_cal_kld(
         self,
         item_attributes: List[Any],
         dict_p: Dict[Any, float],
     ) -> None:
         isinstance(cal_kld(item_attributes, dict_p), float)
 
-    def test_ndkl(
+    def test_cal_ndkl(
         self,
         item_attributes: List[Any],
         dict_p: Dict[Any, float],
     ) -> None:
-        isinstance(ndkl(item_attributes, dict_p), float)
+        isinstance(cal_ndkl(item_attributes, dict_p), float)
 
-    def test_infeasible(
+    def test_cal_infeasible(
         self,
         item_attributes: List[Any],
         dict_p: Dict[Any, float],
     ) -> None:
-        infeasible_index, infeasible_count = infeasible(item_attributes, dict_p, 5)
+        infeasible_index, infeasible_count = cal_infeasible(item_attributes, dict_p, 5)
         isinstance(infeasible_index, int)
         isinstance(infeasible_count, int)

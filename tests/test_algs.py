@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pytest
@@ -23,37 +23,65 @@ class TestReranking:
             ([4, 5], {4: 0.3, 5: 0.4, 6: 0.3}),  # distribution attr contains item attr
         ],
     )
-    def test_class_raise_exception(
+    def test_init_raise_exception(
         self, item_attributes: List[Any], distribution: Dict[Any, float]
     ) -> None:
         with pytest.raises((NameError, ValueError)):
             Reranking(item_attributes, distribution)
 
     @pytest.mark.parametrize(
-        "item_attributes, distribution, expected_item_attr, expected_distr_key",
+        "item_attributes, distribution, max_n_attribute, expected_item_attr, expected_distr_key",
         [
-            ([2, 4, 5], {4: 0.3, 5: 0.4, 6: 0.3}, ["masked", 4, 5], ["masked", 4, 5]),
-            ([4, 5, 6], {4: 0.3, 5: 0.4, 6: 0.3}, [4, 5, 6], [4, 5, 6]),
+            (
+                [2, 4, 5],
+                {4: 0.3, 5: 0.4, 6: 0.3},
+                None,
+                ["masked", 4, 5],
+                ["masked", 4, 5],
+            ),  # mask both
+            (
+                [4, 5, 6],
+                {4: 0.3, 5: 0.4, 6: 0.3},
+                None,
+                [4, 5, 6],
+                [4, 5, 6],
+            ),  # mask nothing case 2
             (
                 [4, 5, 6, 7],
                 {4: 0.3, 5: 0.4, 6: 0.3},
+                None,
                 [4, 5, 6, 7],
                 [
                     4,
                     5,
                     6,
                 ],
-            ),
+            ),  # mask Nothing case 2
+            (
+                [2, 3, 4],
+                {2: 0.3, 3: 0.2, 4: 0.1, 5: 0.1, 6: 0.1},
+                3,
+                [2, 3, "masked"],
+                [2, 3, "masked"],
+            ),  # max_n_attribute constraint case 1
+            (
+                [1, 2, 3, 4],
+                {2: 0.3, 3: 0.2, 4: 0.1, 5: 0.1, 6: 0.1},
+                3,
+                ["masked", 2, 3, "masked"],
+                [2, 3, "masked"],
+            ),  # max_n_attribute constraint case 2
         ],
     )
-    def test_class_init(
+    def test_process_init(
         self,
         item_attributes: List[Any],
         distribution: Dict[Any, float],
+        max_n_attribute: Optional[int],
         expected_item_attr: List[Any],
         expected_distr_key: List[Any],
     ) -> None:
-        r = Reranking(item_attributes, distribution)
+        r = Reranking(item_attributes, distribution, max_n_attribute=max_n_attribute)
         assert set(expected_item_attr) == set(r.item_attr)
         assert set(expected_distr_key) == set(r.distr)
 
@@ -88,7 +116,7 @@ class TestReranking:
         algorithm: str,
     ) -> None:
         ranker = Reranking(genders, distribution)
-        re_rankings = ranker.re_rank(algorithm=algorithm, k_max=k_max)
+        re_rankings = ranker(algorithm=algorithm, k_max=k_max)
 
         re_features = [genders[i] for i in re_rankings]
         acutal_male = re_features.count("male")

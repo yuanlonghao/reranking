@@ -8,6 +8,8 @@ import pandas as pd
 logger = getLogger(__name__)
 
 ## TODO: deal with this situation: attributes = ["f1", ["f1", "f2"], "f2", ...]
+
+
 class Reranking:
     """
     Re-ranking algorithms in the paper: Fairness-Aware Ranking in Search
@@ -15,12 +17,10 @@ class Reranking:
 
     Attributes:
         item_attr:
-            The attributes corresponding to the each item ranked by
-            recommendation system or search engine, from top to bottom.
+            The attributes in order of each item ranked by recommendation system
+            or search engine, from top to bottom.
         distr:
             The disired distribution for each attribute.
-        item_ids:
-            The item ids, optional input.
         df_formatted:
             Dataframe containing all the processed information.
         data:
@@ -28,31 +28,142 @@ class Reranking:
         p:
             Desired distribution in list format.
 
-    Usage:
-        Call `re_rank` method.
     """
 
     def __init__(
         self,
-        item_attributes: List[Any],
-        distribution: Dict[Any, float],
-        item_ids: Optional[List[int]] = None,
+        item_attribute: List[Any],
+        desired_distribution: Dict[Any, float],
+        max_n_attribute: Optional[int] = None,  # TODO: implement this
     ) -> None:
-        self.item_attr = item_attributes.copy()
-        self.distr = distribution.copy()
-        self._process_init()
 
-        if item_ids is None:
-            item_ids = [i for i in range(len(self.item_attr))]
-        self.item_ids = item_ids
+        self.max_n_attribute = max_n_attribute
 
+        self.item_attr, self.distr = self._process_init(
+            item_attribute, desired_distribution
+        )
         self.df_formatted, self.data, self.p = self._format_init()
 
-    def re_rank(
+    def _process_init(
+        self,
+        item_attribute: List[Any],
+        desired_distribution: Dict[Any, float],
+    ) -> Tuple[List[Any], Dict[Any, float]]:
+        """
+        Processes input item attributes and desired distribution to the proper form.
+
+        Remark:
+        set_1: attributes in item and distr
+        set_2: attributes in item but not in distr
+        set_3: attributes in distr but not in item
+
+        Process logic:
+            1. Sum of distr values is larger than 1: ValueError
+            2. Mask the lowest value attrs in distr to remain `self.max_n_attribute` desired attrs
+            3. set_1 False: NameError
+            4. set_1 True:
+                - set_2 True, set_3 True: mask set_2 in item and set_3 in distr
+                - set_2 False, set_3 True: NameError (distr contains item, lack attribute in item)
+                - set_2 False, set_3 False: pass (item set equals distr set)
+                - set_2 True, set_3 False: pass (item contains distr, no need to mask)
+        """
+
+        item_attr = item_attribute.copy()
+        distr = desired_distribution.copy()
+
+        distri_sum = sum(distr.values())
+        if distri_sum > 1 + 1e-6:
+            raise ValueError("Sum of desired attribute distribution larger than 1.")
+
+        if self.max_n_attribute is not None:
+            n_merge = len(distr) - self.max_n_attribute
+            if n_merge > 0:
+                sorted_attrs = sorted(distr, key=lambda x: distr[x])
+                distr = self._mask_distr(distr, sorted_attrs[: n_merge + 1])
+            else:
+                pass
+
+        attr_in_item_in_distr = set(item_attr) & set(distr)
+        attr_in_item_not_distr = set(item_attr) - attr_in_item_in_distr
+        attr_in_distr_not_item = set(distr) - attr_in_item_in_distr
+        if attr_in_item_in_distr:
+            if attr_in_distr_not_item and not attr_in_item_not_distr:
+                raise NameError(
+                    f"Wrong attribute in distribution: {attr_in_distr_not_item}."
+                )
+            elif attr_in_distr_not_item and attr_in_item_not_distr:
+                item_attr = [
+                    "masked" if i in attr_in_item_not_distr else i for i in item_attr
+                ]
+                distr = self._mask_distr(distr, list(attr_in_distr_not_item))
+            else:
+                pass
+        else:
+            raise NameError("Item attribute and distribution have no intersection.")
+        return item_attr, distr
+
+    def _mask_distr(
+        self, distr: Dict[Any, float], mask_attr: List[Any]
+    ) -> Dict[Any, float]:
+        valid_distr = {k: v for k, v in distr.items() if k not in mask_attr}
+        valid_distr["masked"] = 1.0 - sum(valid_distr.values())
+        return valid_distr
+
+    def _format_init(
+        self,
+    ) -> Tuple[pd.DataFrame, Dict[Tuple[int, int], int], List[float]]:
+        """Formats init inputs.
+
+        Returns:
+            df: dataframe contains processed information.
+            data: in {(attribute_index, ranking in the attribute): overall ranking, ...} format.
+            p: List[float] of distributions of each attribute.
+        """
+
+        factorized_attribute = pd.factorize(self.item_attr)[0]
+        df = pd.DataFrame(
+            {
+                "model_rank": list(range(len(self.item_attr))),
+                "attribute": self.item_attr,
+                "attribute_enc": factorized_attribute,
+            }
+        )
+        df.sort_values(
+            ["attribute_enc", "model_rank"], ascending=[True, True], inplace=True
+        )
+        df.reset_index(drop=True, inplace=True)
+        df["attri_rank"] = (
+            df.groupby("attribute_enc")
+            .apply(lambda x: [i for i in range(len(x))])
+            .sum()
+        )
+        df_distr = pd.DataFrame(
+            {"attribute": self.distr.keys(), "distr": self.distr.values()}
+        )
+        df = df.merge(df_distr, on="attribute", how="left")
+
+        data = {
+            (a, a_rank): rank
+            for a, a_rank, rank in zip(
+                df.attribute_enc,
+                df.attri_rank,
+                df.model_rank,
+            )
+        }
+        p = df.drop_duplicates("attribute_enc").distr.tolist()
+
+        return df, data, p
+
+    def __call__(
         self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
     ) -> Union[List[int], pd.DataFrame]:
         """
         Processes all the four re-ranking algorithms.
+
+        Args:
+            k_max: re-ranking top k_max items
+            algorithm: name of one of the four algorithms
+            verbose: if True, output dataframe with more infomation
 
         Reliability of the algorithms:
             1. `det_greedy`, `det_cons` and `det_relaxed` are guaranteed to be feasible if the category of
@@ -169,101 +280,6 @@ class Reranking:
             return self._get_verbose(re_ranked_ranking)
         else:
             return re_ranked_ranking
-
-    def _process_init(self) -> None:
-        """
-        Remark:
-        set_1: attributes in item and distr
-        set_2: attributes in item but not in distr
-        set_3: attributes in distr but not in item
-
-        Process logic:
-        - Sum of distribution larger than 1: ValueError
-        - set_1 False: NameError
-        - set_1 True:
-            - set_2 True, set_3 True: mask set_2 in item and set_3 in distr
-            - set_2 False, set_3 True: NameError (distr contains item, lack attribute in item)
-            - set_2 False, set_3 False: pass (item set equals distr set)
-            - set_2 True, set_3 False: pass (item contains distr, no need to mask)
-        """
-
-        distri_sum = sum(self.distr.values())
-        if distri_sum > 1 + 1e-6:
-            raise ValueError("Sum of desired attribute distribution larger than 1.")
-
-        attr_in_item_in_distr = set(self.item_attr) & set(self.distr)
-        attr_in_item_not_distr = set(self.item_attr) - attr_in_item_in_distr
-        attr_in_distr_not_item = set(self.distr) - attr_in_item_in_distr
-        if attr_in_item_in_distr:
-            if attr_in_distr_not_item and not attr_in_item_not_distr:
-                raise NameError(
-                    f"Wrong attribute name in distribution: {attr_in_distr_not_item}."
-                )
-            elif attr_in_distr_not_item and attr_in_item_not_distr:
-                self.item_attr = [
-                    "masked" if i in attr_in_item_not_distr else i
-                    for i in self.item_attr
-                ]
-                valid_distr = {
-                    k: v
-                    for k, v in self.distr.items()
-                    if k not in attr_in_distr_not_item
-                }
-                valid_distr["masked"] = 1.0 - sum(valid_distr.values())
-                self.distr = valid_distr
-            else:
-                pass
-        else:
-            raise NameError(
-                "Item attribute names and distribution names have no intersection."
-            )
-
-    def _format_init(
-        self,
-    ) -> Tuple[pd.DataFrame, Dict[Tuple[int, int], int], List[float]]:
-        """Formats init inputs.
-
-        Returns:
-            df: dataframe contains processed information.
-            data: in {(attribute_index, ranking in the attribute): overall ranking, ...} format.
-            p: List[float] of distributions of each attribute.
-        """
-
-        rankings = [i for i in range(len(self.item_ids))]
-        factorized_attribute = pd.factorize(self.item_attr)[0]
-        df = pd.DataFrame(
-            {
-                "item_id": self.item_ids,
-                "attribute": self.item_attr,
-                "attribute_enc": factorized_attribute,
-                "model_rank": rankings,
-            }
-        )
-        df.sort_values(
-            ["attribute_enc", "model_rank"], ascending=[True, True], inplace=True
-        )
-        df.reset_index(drop=True, inplace=True)
-        df["attri_rank"] = (
-            df.groupby("attribute_enc")
-            .apply(lambda x: [i for i in range(len(x))])
-            .sum()
-        )
-        df_distr = pd.DataFrame(
-            {"attribute": self.distr.keys(), "distr": self.distr.values()}
-        )
-        df = df.merge(df_distr, on="attribute", how="left")
-
-        data = {
-            (a, a_rank): rank
-            for a, a_rank, rank in zip(
-                df.attribute_enc,
-                df.attri_rank,
-                df.model_rank,
-            )
-        }
-        p = df.drop_duplicates("attribute_enc").distr.tolist()
-
-        return df, data, p
 
     def _get_verbose(self, re_ranked_ranking: List[int]) -> pd.DataFrame:
 
