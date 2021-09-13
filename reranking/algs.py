@@ -18,11 +18,13 @@ class Reranking:
     Attributes:
         item_attr:
             The attributes in order of each item ranked by recommendation system
-            or search engine, from top to bottom.
+            or search engine, from top to bottom. The values in the list can be
+            feature index (int) or feature name (str).
         distr:
-            The disired distribution for each attribute.
+            The disired distribution for each attribute. The values in the list can be
+            feature index (int) or feature name (str).
         max_n_attribute:
-            The maximum number of different values of the attributes in distribution. 
+            The maximum number of different values of the attributes in distribution.
             The number is achieved by merging the attributes with the lowest probabilities.
         df_formatted:
             Dataframe containing all the processed information.

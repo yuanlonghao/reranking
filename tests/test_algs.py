@@ -45,7 +45,7 @@ class TestReranking:
                 None,
                 [4, 5, 6],
                 [4, 5, 6],
-            ),  # mask nothing case 2
+            ),  # mask nothing case 1
             (
                 [4, 5, 6, 7],
                 {4: 0.3, 5: 0.4, 6: 0.3},
@@ -56,7 +56,7 @@ class TestReranking:
                     5,
                     6,
                 ],
-            ),  # mask Nothing case 2
+            ),  # mask nothing case 2
             (
                 [2, 3, 4],
                 {2: 0.3, 3: 0.2, 4: 0.1, 5: 0.1, 6: 0.1},

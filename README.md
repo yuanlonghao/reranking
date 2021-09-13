@@ -30,7 +30,7 @@ from reranking.algs import Reranking
 r = Reranking(["f1", "f1", "f1", "f2", "f1", "f1", "f1", "f2"], {"f1": 0.5, "f2": 0.5})
 r(k_max=4) # we want "f1" and "f2" have equal proportion in top-4
 ```
-The output is `[0, 3, 1, 7]` which is the indices of the top-4 items after re-ranking by the desired distribution.  
-(The input feature list is corresponding to the ranked items so it contains score/ranking information.)  
+The output is `[0, 3, 1, 7]` which is the indices of the top-4 items after re-ranking by the desired distribution.
+(The input feature list is corresponding to the ranked items so it contains score/ranking information.)
 
 More examples can be found [here](examples/usage_example.ipynb).
