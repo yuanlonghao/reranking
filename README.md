@@ -17,7 +17,7 @@ Inspired by paper [Fairness-Aware Ranking in Search & Recommendation Systems wit
 Taking "recommend candidates to recruiters" as the example (this is the case of LinkedIn Recruiter service stressed in the paper), the search engine ranking are re-ranked by the distribution of the protected attributes like gender and demographic parity in consideration of the fair display of the candidates to recruiters.
 
 ### Personalization: impose personalized distribution to each user based on their preference
-For example, when we recommend products to users, the item preference distribution for each user (obtained by the purchase/view log) can be used to re-rank the item rankings calculated by recommendation systems.
+For example, when we recommend products to users, the products preference distribution for each user (i.e., obtained by the purchase or view log) can be used to re-rank the output item rankings by recommendation systems.
 
 ## Installation
 ```shell
@@ -30,6 +30,7 @@ from reranking.algs import Reranking
 r = Reranking(["f1", "f1", "f1", "f2", "f1", "f1", "f1", "f2"], {"f1": 0.5, "f2": 0.5})
 r(k_max=4) # we want "f1" and "f2" have equal proportion in top-4
 ```
-The output is `[0, 3, 1, 7]` which is the re-ranked ranking of the top-4 items.
+The output is `[0, 3, 1, 7]` which is the indices of the top-4 items after re-ranking by the desired distribution.
+(The input feature list is corresponding to the ranked items so it contains score/ranking information.)
 
 More examples can be found [here](examples/usage_example.ipynb).

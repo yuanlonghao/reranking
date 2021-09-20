@@ -18,15 +18,14 @@ class Reranking:
     Attributes:
         item_attr:
             The attributes in order of each item ranked by recommendation system
-            or search engine, from top to bottom.
+            or search engine, from top to bottom. The values in the list can be
+            feature index (int) or feature name (str).
         distr:
-            The disired distribution for each attribute.
-        df_formatted:
-            Dataframe containing all the processed information.
-        data:
-            In format of {(`attribute index`, `rank in the attribute`): overall rank}.
-        p:
-            Desired distribution in list format.
+            The disired distribution for each attribute. The values in the list can be
+            feature index (int) or feature name (str).
+        max_na:
+            The maximum number of different values of the attributes in distribution.
+            The constraint is achieved by merging the n lowest probabilities attributes.
 
     """
 
@@ -34,21 +33,51 @@ class Reranking:
         self,
         item_attribute: List[Any],
         desired_distribution: Dict[Any, float],
-        max_n_attribute: Optional[int] = None,  # TODO: implement this
+        max_na: Optional[int] = None,
     ) -> None:
+        self.item_attr = item_attribute
+        self.distr = desired_distribution
+        self.max_na = max_na
 
-        self.max_n_attribute = max_n_attribute
+    def __call__(
+        self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
+    ) -> Union[List[int], pd.DataFrame]:
+        """
+        Processes all the four re-ranking algorithms.
 
-        self.item_attr, self.distr = self._process_init(
-            item_attribute, desired_distribution
-        )
-        self.df_formatted, self.data, self.p = self._format_init()
+        Args:
+            k_max: re-ranking top k_max items
+            algorithm: name of one of the four algorithms
+            verbose: if True, output dataframe with more infomation in dataframe
 
-    def _process_init(
-        self,
-        item_attribute: List[Any],
-        desired_distribution: Dict[Any, float],
-    ) -> Tuple[List[Any], Dict[Any, float]]:
+        Attributes:
+            df_formatted:
+                Dataframe containing all the processed information.
+            data:
+                In format of {(`attribute index`, `rank in the attribute`): overall rank}.
+            p:
+                Desired distribution in list format.
+
+        Reliability of the algorithms according to the paper:
+            1. `det_greedy`, `det_cons` and `det_relaxed` are guaranteed to be feasible if the category of
+                the attributes is <=3.
+            2. `det_greedy` is NOT guaranteed to be feasible if the category of the attributes is >=4.
+            3. `det_const_sort` is guaranteed to be feasible.
+        """
+
+        try:
+            self.df_formatted, self.data, self.p = self._format_alg_input()
+            if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
+                return self.rerank_greedy(k_max, algorithm, verbose)
+            elif algorithm == "det_const_sort":
+                return self.rerank_ics(k_max, verbose)
+            else:
+                raise NotImplementedError(f"Invalid algorithm name: {algorithm}.")
+        except (ValueError, NameError) as e:
+            logger.warning(f"Returned default ranking by the exception: `{e}`")
+            return list(range(len(self.item_attr)))
+
+    def _mask_item_attr_and_distr(self) -> Tuple[List[Any], Dict[Any, float]]:
         """
         Processes input item attributes and desired distribution to the proper form.
 
@@ -59,29 +88,27 @@ class Reranking:
 
         Process logic:
             1. Sum of distr values is larger than 1: ValueError
-            2. Mask the lowest value attrs in distr to remain `self.max_n_attribute` desired attrs
+            2. Mask the lowest value attrs in distr to keep `self.max_na` desired attrs
             3. set_1 False: NameError
             4. set_1 True:
                 - set_2 True, set_3 True: mask set_2 in item and set_3 in distr
                 - set_2 False, set_3 True: NameError (distr contains item, lack attribute in item)
                 - set_2 False, set_3 False: pass (item set equals distr set)
-                - set_2 True, set_3 False: pass (item contains distr, no need to mask)
+                - set_2 True, set_3 False: mask set_2 in item
         """
 
-        item_attr = item_attribute.copy()
-        distr = desired_distribution.copy()
+        item_attr = self.item_attr.copy()
+        distr = self.distr.copy()
 
         distri_sum = sum(distr.values())
         if distri_sum > 1 + 1e-6:
             raise ValueError("Sum of desired attribute distribution larger than 1.")
 
-        if self.max_n_attribute is not None:
-            n_merge = len(distr) - self.max_n_attribute
+        if self.max_na is not None:
+            n_merge = len(distr) - self.max_na
             if n_merge > 0:
                 sorted_attrs = sorted(distr, key=lambda x: distr[x])
                 distr = self._mask_distr(distr, sorted_attrs[: n_merge + 1])
-            else:
-                pass
 
         attr_in_item_in_distr = set(item_attr) & set(distr)
         attr_in_item_not_distr = set(item_attr) - attr_in_item_in_distr
@@ -91,6 +118,10 @@ class Reranking:
                 raise NameError(
                     f"Wrong attribute in distribution: {attr_in_distr_not_item}."
                 )
+            elif not attr_in_distr_not_item and attr_in_item_not_distr:
+                item_attr = [
+                    "masked" if i in attr_in_item_not_distr else i for i in item_attr
+                ]
             elif attr_in_distr_not_item and attr_in_item_not_distr:
                 item_attr = [
                     "masked" if i in attr_in_item_not_distr else i for i in item_attr
@@ -100,19 +131,21 @@ class Reranking:
                 pass
         else:
             raise NameError("Item attribute and distribution have no intersection.")
-        return item_attr, distr
+        return (item_attr, distr)
 
     def _mask_distr(
         self, distr: Dict[Any, float], mask_attr: List[Any]
     ) -> Dict[Any, float]:
+        """Masks distribution by specified attributes."""
+
         valid_distr = {k: v for k, v in distr.items() if k not in mask_attr}
         valid_distr["masked"] = 1.0 - sum(valid_distr.values())
         return valid_distr
 
-    def _format_init(
+    def _format_alg_input(
         self,
     ) -> Tuple[pd.DataFrame, Dict[Tuple[int, int], int], List[float]]:
-        """Formats init inputs.
+        """Formats inputs of algorithms.
 
         Returns:
             df: dataframe contains processed information.
@@ -120,12 +153,12 @@ class Reranking:
             p: List[float] of distributions of each attribute.
         """
 
-        factorized_attribute = pd.factorize(self.item_attr)[0]
+        item_attr, distr = self._mask_item_attr_and_distr()
         df = pd.DataFrame(
             {
-                "model_rank": list(range(len(self.item_attr))),
-                "attribute": self.item_attr,
-                "attribute_enc": factorized_attribute,
+                "model_rank": list(range(len(item_attr))),
+                "attribute": item_attr,
+                "attribute_enc": pd.factorize(item_attr)[0],
             }
         )
         df.sort_values(
@@ -137,14 +170,14 @@ class Reranking:
             .apply(lambda x: [i for i in range(len(x))])
             .sum()
         )
-        df_distr = pd.DataFrame(
-            {"attribute": self.distr.keys(), "distr": self.distr.values()}
-        )
-        df = df.merge(df_distr, on="attribute", how="left")
+        df_distr = pd.DataFrame({"attribute": distr.keys(), "distr": distr.values()})
+        df = df.merge(df_distr, on="attribute", how="left").fillna(
+            0.0
+        )  # NaN distr value become 0.0
 
         data = {
-            (a, a_rank): rank
-            for a, a_rank, rank in zip(
+            (attribute_enc, attri_rank): model_rank
+            for attribute_enc, attri_rank, model_rank in zip(
                 df.attribute_enc,
                 df.attri_rank,
                 df.model_rank,
@@ -152,35 +185,9 @@ class Reranking:
         }
         p = df.drop_duplicates("attribute_enc").distr.tolist()
 
-        return df, data, p
+        return (df, data, p)
 
-    def __call__(
-        self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
-    ) -> Union[List[int], pd.DataFrame]:
-        """
-        Processes all the four re-ranking algorithms.
-
-        Args:
-            k_max: re-ranking top k_max items
-            algorithm: name of one of the four algorithms
-            verbose: if True, output dataframe with more infomation
-
-        Reliability of the algorithms:
-            1. `det_greedy`, `det_cons` and `det_relaxed` are guaranteed to be feasible if the category of
-                the attributes is <=3.
-            2. `det_greedy` is NOT guaranteed to be feasible if the category of the attributes is >=4.
-            3. `det_const_sort` is guaranteed to be feasible.
-        """
-
-        if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
-            re_ranking = self.re_rank_greedy(k_max, algorithm, verbose)
-        elif algorithm == "det_const_sort":
-            re_ranking = self.re_rank_ics(k_max, verbose)
-        else:
-            raise NotImplementedError("Invalid algorithm name.")
-        return re_ranking
-
-    def re_rank_greedy(
+    def rerank_greedy(
         self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
     ) -> Union[List[int], pd.DataFrame]:
         """Implements the greedy-based algorithms: `DetGreedy`, `DetCons`, `DetRelaxed`."""
@@ -219,7 +226,7 @@ class Reranking:
         else:
             return re_ranked_ranking
 
-    def re_rank_ics(
+    def rerank_ics(
         self, k_max: int = 10, verbose: bool = False
     ) -> Union[List[int], pd.DataFrame]:
         """Implements `DetConstSort` algorithm."""
@@ -266,8 +273,8 @@ class Reranking:
                             and re_ranked_ranking_dict[start - 1]
                             > re_ranked_ranking_dict[start]
                         ):
-                            self._swap_dict_val(max_indices_dict, start - 1, start)
-                            self._swap_dict_val(
+                            self._swap_dict_values(max_indices_dict, start - 1, start)
+                            self._swap_dict_values(
                                 re_ranked_ranking_dict, start - 1, start
                             )
                             start -= 1
@@ -280,19 +287,6 @@ class Reranking:
             return self._get_verbose(re_ranked_ranking)
         else:
             return re_ranked_ranking
-
-    def _get_verbose(self, re_ranked_ranking: List[int]) -> pd.DataFrame:
-
-        df_verbose = pd.DataFrame(
-            {
-                "model_rank": re_ranked_ranking,
-                "re_rank": [i for i in range(len(re_ranked_ranking))],
-            }
-        )
-        df_verbose = df_verbose.merge(self.df_formatted, on="model_rank", how="left")
-        df_verbose.drop(["attribute_enc", "attri_rank"], axis=1, inplace=True)
-
-        return df_verbose
 
     def _process_violated_attributes(
         self,
@@ -351,8 +345,23 @@ class Reranking:
         next_attr = min(data_rest, key=lambda k: data_rest[k])[0]
         return next_attr
 
+    def _get_verbose(self, re_ranked_ranking: List[int]) -> pd.DataFrame:
+
+        df_verbose = pd.DataFrame(
+            {
+                "model_rank": re_ranked_ranking,
+                "re_rank": [i for i in range(len(re_ranked_ranking))],
+            }
+        )
+        df_verbose = df_verbose.merge(self.df_formatted, on="model_rank", how="left")
+        df_verbose.drop(["attribute_enc", "attri_rank"], axis=1, inplace=True)
+
+        return df_verbose
+
     @staticmethod
-    def _swap_dict_val(dic: Dict[int, Any], key_1: int, key_2: int) -> Dict[int, Any]:
+    def _swap_dict_values(
+        dic: Dict[int, Any], key_1: int, key_2: int
+    ) -> Dict[int, Any]:
         """Swaps values of two keys in a dictionary."""
 
         dic[key_1], dic[key_2] = dic[key_2], dic[key_1]
