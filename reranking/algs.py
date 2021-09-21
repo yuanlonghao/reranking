@@ -67,15 +67,16 @@ class Reranking:
 
         try:
             self.df_formatted, self.data, self.p = self._format_alg_input()
-            if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
-                return self.rerank_greedy(k_max, algorithm, verbose)
-            elif algorithm == "det_const_sort":
-                return self.rerank_ics(k_max, verbose)
-            else:
-                raise NotImplementedError(f"Invalid algorithm name: {algorithm}.")
         except (ValueError, NameError) as e:
             logger.warning(f"Returned default ranking by the exception: `{e}`")
-            return list(range(len(self.item_attr)))
+            return list(range(min(k_max, len(self.item_attr))))
+
+        if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
+            return self.rerank_greedy(k_max, algorithm, verbose)
+        elif algorithm == "det_const_sort":
+            return self.rerank_ics(k_max, verbose)
+        else:
+            raise NotImplementedError(f"Invalid algorithm name: {algorithm}.")
 
     def _mask_item_attr_and_distr(self) -> Tuple[List[Any], Dict[Any, float]]:
         """
