@@ -109,7 +109,7 @@ def cal_ndcg_diff(reranked_ranking: List[int], k_max: int) -> float:
     pred_list_sorted = np.sort(pred_list)[::-1]
     dcg = np.sum(pred_list / cg_factor)
     idcg = np.sum(pred_list_sorted / cg_factor)
-    ndcg_ = dcg / idcg if idcg != 0 else 0.0
+    ndcg_: float = dcg / idcg if idcg != 0 else 0.0
     return ndcg_
 
 

@@ -52,10 +52,10 @@ class TestMetrics:
     ) -> None:
         assert isinstance(cal_kld(item_attributes, dict_p), float)
 
-    def test_cal_ndcg_diff(self)->None:
-        assert isinstance(cal_ndcg_diff([0,1,4,3], 4), float)
-        assert cal_ndcg_diff([0,1,2,3], 4) == 1.0
-        assert cal_ndcg_diff([4,5,6,7], 4) == 0.0
+    def test_cal_ndcg_diff(self) -> None:
+        assert isinstance(cal_ndcg_diff([0, 1, 4, 3], 4), float)
+        assert cal_ndcg_diff([0, 1, 2, 3], 4) == 1.0
+        assert cal_ndcg_diff([4, 5, 6, 7], 4) == 0.0
 
     def test_cal_ndkl(
         self,
