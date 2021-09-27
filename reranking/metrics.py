@@ -12,6 +12,20 @@ def skew(p_1: float, p_2: float) -> float:
     return math.log((p_1 + 1e-10) / (p_2 + 1e-10))
 
 
+def skews(distr_1: List[float], distr_2: List[float]) -> Tuple[float, float, float]:
+    """
+    Calculates min, max, absolute mean skew of all the attributes.
+
+    distr_1, distr_2: two list of distribution values
+    """
+    skews = [0.0]  # sometimes distr_1 and distr_2 has no intersection
+    for i, j in zip(distr_1, distr_2):
+        if i * j != 0:  # skip any 0 values
+            skews.append(math.log((i + 1e-10) / (j + 1e-10)))
+    skews_abs = [abs(i) for i in skews]
+    return min(skews), max(skews), sum(skews_abs) / len(skews_abs)
+
+
 def cal_skew(
     item_attributes: List[Any],
     object_attribute: Any,
@@ -28,20 +42,6 @@ def cal_skew(
     propotion = count / k
     s = skew(propotion, desired_proportion)
     return s
-
-
-def skews(distr_1: List[float], distr_2: List[float]) -> Tuple[float, float, float]:
-    """
-    Calculates min, max, absolute mean skew of all the attributes.
-
-    distr_1, distr_2: two list of distribution values
-    """
-    skews = [0.0]  # sometimes distr_1 and distr_2 has no intersection
-    for i, j in zip(distr_1, distr_2):
-        if i * j != 0:  # skip any 0 values
-            skews.append(math.log((i + 1e-10) / (j + 1e-10)))
-    skews_abs = [abs(i) for i in skews]
-    return min(skews), max(skews), sum(skews_abs) / len(skews_abs)
 
 
 def cal_skews(
@@ -94,6 +94,23 @@ def cal_kld(
         distr_2.append(dict_p[attr])
     res = kld(distr_1, distr_2)
     return res
+
+
+def cal_ndcg_diff(reranked_ranking: List[int], k_max: int) -> float:
+    """
+    Calculates the NDCG of the ranking change.
+    Original ranking: from 0 to k_max, i.e., [0, 1, 2, 3, ...]
+    re-ranked ranking: new ranking after algorithm, e.g., [0, 4, 2, 3, ...]
+    """
+
+    original_ranking = list(range(k_max))
+    pred_list = np.array([1 if i in original_ranking else 0 for i in reranked_ranking])
+    cg_factor = np.log2(np.arange(2, 4 + 2))
+    pred_list_sorted = np.sort(pred_list)[::-1]
+    dcg = np.sum(pred_list / cg_factor)
+    idcg = np.sum(pred_list_sorted / cg_factor)
+    ndcg_ = dcg / idcg if idcg != 0 else 0.0
+    return ndcg_
 
 
 def cal_ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
