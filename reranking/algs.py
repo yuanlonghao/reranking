@@ -43,12 +43,12 @@ class Reranking:
         self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
     ) -> Union[List[int], pd.DataFrame]:
         """
-        Processes all the four re-ranking algorithms.
+        Re-ranks items by the four algorithms in the paper.
 
         Args:
-            k_max: re-ranking top k_max items
+            k_max: top k_max re-ranking items
             algorithm: name of one of the four algorithms
-            verbose: if True, output dataframe with more infomation in dataframe
+            verbose: if True, the output is dataframe with more infomation
 
         Attributes:
             df_formatted:
@@ -58,7 +58,8 @@ class Reranking:
             p:
                 Desired distribution in list format.
 
-        Reliability of the algorithms according to the paper:
+        Reliability of the algorithms:
+            According to the paper,
             1. `det_greedy`, `det_cons` and `det_relaxed` are guaranteed to be feasible if the category of
                 the attributes is <=3.
             2. `det_greedy` is NOT guaranteed to be feasible if the category of the attributes is >=4.
@@ -68,7 +69,7 @@ class Reranking:
         try:
             self.df_formatted, self.data, self.p = self._format_alg_input()
         except (ValueError, NameError) as e:
-            logger.warning(f"Returned default ranking by the exception: `{e}`")
+            logger.debug(f"Returning default ranking by the exception: `{e}`")
             return list(range(min(k_max, len(self.item_attr))))
 
         if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
@@ -83,19 +84,20 @@ class Reranking:
         Processes input item attributes and desired distribution to the proper form.
 
         Remark:
-        set_1: attributes in item and distr
-        set_2: attributes in item but not in distr
-        set_3: attributes in distr but not in item
+        set_1: attributes in `self.item_attr` and `self.distr`
+        set_2: attributes in `self.item_attr` but not in `self.distr`
+        set_3: attributes in `self.distr` but not in `self.item_attr`
 
         Process logic:
-            1. Sum of distr values is larger than 1: ValueError
-            2. Mask the lowest value attrs in distr to keep `self.max_na` desired attrs
+            1. Sum of the `self.distr` values is larger than 1: ValueError
+            2. Merge the lowest value attributes in `self.distr` to meet `self.max_na`
             3. set_1 False: NameError
             4. set_1 True:
-                - set_2 True, set_3 True: mask set_2 in item and set_3 in distr
-                - set_2 False, set_3 True: NameError (distr contains item, lack attribute in item)
-                - set_2 False, set_3 False: pass (item set equals distr set)
-                - set_2 True, set_3 False: mask set_2 in item
+                - set_2 True, set_3 True: mask set_2 in `self.item_attr` and set_3 in `self.distr`
+                - set_2 False, set_3 True: NameError (`self.distr` contains `self.item_attr`,
+                lack attribute in `self.item_attr`)
+                - set_2 False, set_3 False: pass (`self.item_attr` set equals `self.distr` set)
+                - set_2 True, set_3 False: mask set_2 in `self.item_attr`
         """
 
         item_attr = self.item_attr.copy()
@@ -111,9 +113,9 @@ class Reranking:
                 sorted_attrs = sorted(distr, key=lambda x: distr[x])
                 distr = self._mask_distr(distr, sorted_attrs[: n_merge + 1])
 
-        attr_in_item_in_distr = set(item_attr) & set(distr)
-        attr_in_item_not_distr = set(item_attr) - attr_in_item_in_distr
-        attr_in_distr_not_item = set(distr) - attr_in_item_in_distr
+        attr_in_item_in_distr = set(item_attr) & set(distr)  # set_1
+        attr_in_item_not_distr = set(item_attr) - attr_in_item_in_distr  # set_2
+        attr_in_distr_not_item = set(distr) - attr_in_item_in_distr  # set_3
         if attr_in_item_in_distr:
             if attr_in_distr_not_item and not attr_in_item_not_distr:
                 raise NameError(
@@ -215,7 +217,7 @@ class Reranking:
                 except KeyError as ke:  # not enough item of desired attribute
                     attr_short = ke.args[0][0]
                     logger.debug(
-                        f"Lack of item of attribute {attr_short}, input the current top rank item."
+                        f"Lack of item of attribute {attr_short}, input the current top-rank item."
                     )
                     next_attr = self._get_top_rank_attr(re_ranked_ranking)
             else:  # below_min and below_max are empty
