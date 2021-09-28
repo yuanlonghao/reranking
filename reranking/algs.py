@@ -69,7 +69,7 @@ class Reranking:
         try:
             self.df_formatted, self.data, self.p = self._format_alg_input()
         except (ValueError, NameError) as e:
-            logger.warning(f"Returning default ranking by the exception: `{e}`")
+            logger.debug(f"Returning default ranking by the exception: `{e}`")
             return list(range(min(k_max, len(self.item_attr))))
 
         if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:

@@ -104,13 +104,14 @@ def cal_ndcg_diff(reranked_ranking: List[int], k_max: int) -> float:
     """
 
     original_ranking = list(range(k_max))
+    reranked_ranking = reranked_ranking[:k_max]
     pred_list = np.array([1 if i in original_ranking else 0 for i in reranked_ranking])
-    cg_factor = np.log2(np.arange(2, 4 + 2))
+    cg_factor = np.log2(np.arange(2, k_max + 2))
     pred_list_sorted = np.sort(pred_list)[::-1]
     dcg = np.sum(pred_list / cg_factor)
     idcg = np.sum(pred_list_sorted / cg_factor)
-    ndcg_: float = dcg / idcg if idcg != 0 else 0.0
-    return ndcg_
+    ndcg: float = dcg / idcg if idcg != 0 else 0.0
+    return ndcg
 
 
 def cal_ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
