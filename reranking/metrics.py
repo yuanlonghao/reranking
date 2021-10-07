@@ -1,15 +1,16 @@
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
+EPSILON = 1e-5
 
 def skew(p_1: float, p_2: float) -> float:
     """
     p_1, p_2: two probabilities of the same attribute in two distributions
     """
-    return math.log((p_1 + 1e-10) / (p_2 + 1e-10))
+    return math.log((p_1 + EPSILON) / (p_2 + EPSILON))
 
 
 def skews(distr_1: List[float], distr_2: List[float]) -> Tuple[float, float, float]:
@@ -21,11 +22,13 @@ def skews(distr_1: List[float], distr_2: List[float]) -> Tuple[float, float, flo
     skews = [0.0]  # sometimes distr_1 and distr_2 has no intersection
     for i, j in zip(distr_1, distr_2):
         if i * j != 0:  # skip any 0 values
-            skews.append(math.log((i + 1e-10) / (j + 1e-10)))
+            skews.append(math.log((i + EPSILON) / (j + EPSILON)))
     skews_abs = [abs(i) for i in skews]
     return min(skews), max(skews), sum(skews_abs) / len(skews_abs)
 
-
+# TODO: def cal_proportions(List[Any]) : --> Dict[Any,float]:
+    
+# TODO: delete this
 def cal_skew(
     item_attributes: List[Any],
     object_attribute: Any,
@@ -43,7 +46,9 @@ def cal_skew(
     s = skew(propotion, desired_proportion)
     return s
 
+# TODO: def cal_skews(actual_distr:Dict[Any, float], desired_distr: Dict[Any, float])
 
+# TODO: delete this
 def cal_skews(
     item_attributes: List[Any],
     dict_p: Dict[Any, float],
@@ -71,8 +76,7 @@ def kld(distr_1: List[float], distr_2: List[float]) -> float:
 
     vals = []
     for i, j in zip(distr_1, distr_2):
-        if i * j != 0:  # skip any 0 values
-            vals.append(i * math.log(i / j))
+        vals.append(i * math.log((i + EPSILON) / (j + EPSILON)))
     return sum(vals)
 
 
@@ -96,13 +100,15 @@ def cal_kld(
     return res
 
 
-def cal_ndcg_diff(reranked_ranking: List[int], k_max: int) -> float:
+def cal_ndcg_diff(reranked_ranking: List[int], k_max: Optional[int] = None) -> float:
     """
     Calculates the NDCG of the ranking change.
     Original ranking: from 0 to k_max, i.e., [0, 1, 2, 3, ...]
     re-ranked ranking: new ranking after algorithm, e.g., [0, 4, 2, 3, ...]
     """
-
+    
+    if k_max is None:
+        k_max = len(reranked_ranking)
     original_ranking = list(range(k_max))
     reranked_ranking = reranked_ranking[:k_max]
     pred_list = np.array([1 if i in original_ranking else 0 for i in reranked_ranking])
