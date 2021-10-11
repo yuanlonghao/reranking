@@ -5,13 +5,11 @@ import pytest
 from reranking.metrics import (
     cal_infeasible,
     cal_kld,
-    cal_ndcg_diff,
     cal_ndkl,
+    cal_proportion,
+    cal_reranking_ndcg,
     cal_skew,
-    cal_skews,
-    kld,
-    skew,
-    skews,
+    cal_skew_static,
 )
 
 
@@ -24,38 +22,33 @@ class TestMetrics:
     def dict_p(self) -> Dict[Any, float]:
         return {1: 0.5, 2: 0.2, 3: 0.1, 4: 0.3}
 
+    def test_cal_proportion(
+        self,
+        item_attributes: List[Any],
+        dict_p: Dict[Any, float],
+    ) -> None:
+        actual = cal_proportion(item_attributes, list(dict_p.keys()))
+        assert all(isinstance(i, float) for i in actual)
+
     def test_skew(self) -> None:
-        assert isinstance(skew(0.5, 0.5), float)
+        assert isinstance(cal_skew(0.5, 0.5), float)
 
-    def test_cal_skew(self, item_attributes: List[Any]) -> None:
-        assert isinstance(cal_skew(item_attributes, 1, 0.5, 3), float)
-
-    def test_skews(self) -> None:
-        actual = skews([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1])
-        assert all(isinstance(i, float) for i in actual)
-
-    def test_cal_skews(
+    def test_cal_skew_static(
         self,
         item_attributes: List[Any],
         dict_p: Dict[Any, float],
     ) -> None:
-        actual = cal_skews(item_attributes, dict_p, k=3)
+        item_distr = cal_proportion(item_attributes)
+        actual = cal_skew_static(item_distr, list(dict_p.keys()))
         assert all(isinstance(i, float) for i in actual)
 
-    def test_kld(self) -> None:
-        assert isinstance(kld([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1]), float)
-
-    def test_cal_kld(
-        self,
-        item_attributes: List[Any],
-        dict_p: Dict[Any, float],
-    ) -> None:
-        assert isinstance(cal_kld(item_attributes, dict_p), float)
+    def test_cal_kld(self) -> None:
+        assert isinstance(cal_kld([0.1, 0.3, 0.5, 0.0], [0.0, 0.5, 0.4, 0.1]), float)
 
     def test_cal_ndcg_diff(self) -> None:
-        assert isinstance(cal_ndcg_diff([0, 1, 4, 3], 4), float)
-        assert cal_ndcg_diff([0, 1, 2, 3], 4) == 1.0
-        assert cal_ndcg_diff([4, 5, 6, 7], 4) == 0.0
+        assert isinstance(cal_reranking_ndcg([0, 1, 4, 3], 4), float)
+        assert cal_reranking_ndcg([0, 1, 2, 3], 4) == 1.0
+        assert cal_reranking_ndcg([4, 5, 6, 7], 4) == 0.0
 
     def test_cal_ndkl(
         self,
