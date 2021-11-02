@@ -42,7 +42,7 @@ def cal_skew_static(
     Calculates min, max, absolute mean skew of all the attributes.
     """
 
-    skews = [0.0]
+    skews = []
     for i, j in zip(distr_1, distr_2):
         skews.append(math.log((i + EPSILON) / (j + EPSILON)))
     skews_abs = [abs(i) for i in skews]
