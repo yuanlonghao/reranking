@@ -2,6 +2,8 @@
 
 [![Python](https://img.shields.io/badge/python-3.6%7C3.7%7C3.8%7C3.9-red?logo=Python&logoColor=white)](https://www.python.org)
 [![PyPI](https://img.shields.io/pypi/v/reranking?color=green)](https://pypi.org/project/reranking/)
+[![PyTest](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml)
+[![pre-commit](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml)
 [![GitHub](https://img.shields.io/github/license/yuanlonghao/reranking?color=blue)](https://github.com/yuanlonghao/reranking)
 
 
