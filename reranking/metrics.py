@@ -4,10 +4,19 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
+__all__ = [
+    "proportion",
+    "skew",
+    "skew_static",
+    "kld",
+    "ndcg_diff",
+    "ndkl",
+    "infeasible",
+]
 EPSILON = 1e-5
 
 
-def cal_proportion(
+def proportion(
     item_attributes: List[Any], attributes: Optional[Any] = None
 ) -> List[float]:
     """
@@ -25,7 +34,7 @@ def cal_proportion(
     return proportion
 
 
-def cal_skew(p_1: float, p_2: float) -> float:
+def skew(p_1: float, p_2: float) -> float:
     """
     Calculates skew.
 
@@ -35,7 +44,7 @@ def cal_skew(p_1: float, p_2: float) -> float:
     return math.log((p_1 + EPSILON) / (p_2 + EPSILON))
 
 
-def cal_skew_static(
+def skew_static(
     distr_1: List[float], distr_2: List[float]
 ) -> Tuple[float, float, float]:
     """
@@ -49,7 +58,7 @@ def cal_skew_static(
     return min(skews), max(skews), sum(skews_abs) / len(skews_abs)
 
 
-def cal_kld(distr_1: List[float], distr_2: List[float]) -> float:
+def kld(distr_1: List[float], distr_2: List[float]) -> float:
     """
     Calculates KL divergence.
     """
@@ -60,11 +69,10 @@ def cal_kld(distr_1: List[float], distr_2: List[float]) -> float:
     return sum(vals)
 
 
-def cal_reranking_ndcg(
-    reranked_ranking: List[int], k_max: Optional[int] = None
-) -> float:
+def ndcg_diff(reranked_ranking: List[int], k_max: Optional[int] = None) -> float:
     """
     Calculates the NDCG of the ranking change.
+
     Ranking before reranking: from 0 to k_max, i.e., [0, 1, 2, 3, ...]
     Re-ranked ranking: new ranking after the process, e.g., [0, 4, 2, 3, ...]
     """
@@ -82,7 +90,7 @@ def cal_reranking_ndcg(
     return ndcg
 
 
-def cal_ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
+def ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
     """
     Calculates normalized discounted cumulative KL-divergence (NDKL).
 
@@ -99,12 +107,12 @@ def cal_ndkl(item_attributes: List[Any], dict_p: Dict[Any, float]) -> float:
         item_distr = [
             item_attr_k.count(attr) / len(item_attr_k) for attr in dict_p.keys()
         ]
-        total += (1 / math.log2(k + 1)) * cal_kld(item_distr, list(dict_p.values()))
+        total += (1 / math.log2(k + 1)) * kld(item_distr, list(dict_p.values()))
     res: float = (1 / Z) * total
     return res
 
 
-def cal_infeasible(
+def infeasible(
     item_attributes: List[Any],
     dict_p: Dict[Any, float],
     k_max: Optional[int] = None,

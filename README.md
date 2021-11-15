@@ -1,15 +1,15 @@
 # reranking: fairness/personalization for recommendation and search
 
 [![Python](https://img.shields.io/badge/python-3.6%7C3.7%7C3.8%7C3.9-red?logo=Python&logoColor=white)](https://www.python.org)
-[![PyPI](https://img.shields.io/pypi/v/reranking?color=green)](https://pypi.org/project/reranking/)
 [![PyTest](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml)
 [![pre-commit](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml)
+[![PyPI](https://img.shields.io/pypi/v/reranking?color=green)](https://pypi.org/project/reranking/)
 [![GitHub](https://img.shields.io/github/license/yuanlonghao/reranking?color=blue)](https://github.com/yuanlonghao/reranking)
 
 
 ***reranking*** provides algorithms to re-rank the ranked items to any specified item attribute distribution.
 
-This package can be used as a post-processing modular of recommendation system or search engine.
+This package can be used as a post-processing modular of recommendation systems or search engines.
 
 Inspired by paper [Fairness-Aware Ranking in Search & Recommendation Systems with Application to LinkedIn Talent Search](https://dl.acm.org/doi/10.1145/3292500.3330691).
 
@@ -27,18 +27,30 @@ $ pip install reranking
 ```
 
 ## Examples
+### Re-rank
 ```python
-from reranking.algs import Reranking
-
-# Here are the attributes of the top-8 ranked items from a recommendation system
-item_attribute = ["a1", "a1", "a1", "a2", "a1", "a1", "a1", "a2"]
-# Here is the desired item distribution
+import reranking
+item_attribute = ["a1", "a1", "a1", "a2", "a1", "a1", "a1", "a2", "a2", "a1"]
 desired_distribution = {"a1": 0.5, "a2": 0.5}
-# We want items of "a1" and "a2" have equal proportions in top-4
-r = Reranking(item_attribute, desired_distribution)
-r(k_max=4)
+rerank_indices = reranking.rerank(
+    item_attribute,  # attributes of the ranked items
+    desired_distribution,  # desired item distribution
+    max_na=None,  # to control the max number of attributes applied
+    k_max=None,  # length of output, if None, k_max is the length of `item_attribute`
+    algorithm="det_greedy",  # "det_greedy", "det_cons", "det_relaxed", "det_const_sort"
+    verbose=False,  # if True, the output is with detailed information
+)
 ```
-The output is `[0, 3, 1, 7]` which is the indices of the top-4 items after re-ranking by the desired distribution.
+The `rerank_indices` is `[0, 3, 1, 7, 2, 8, 4, 5, 6, 9]` which is the indices of the items after re-ranking by the desired distribution. Top items of the re-ranked items will have the same distribution with the desired distribution if there are enough desired items.
 (`item_attribute` has the same order with the ranked items so it contains score information.)
+
+### Evaluate
+```python
+before = reranking.ndkl(item_attribute, desired_distribution)
+
+item_attribute_reranked = [item_attribute[i] for i in rerank_indices]
+after = reranking.ndkl(item_attribute_reranked, desired_distribution)
+```
+The `before` and `after` are `0.412` and `0.172` respectively which are the normalized discounted cumulative KL-divergence (NDKL) of the ranked item attribute distribution and the desired distribution. (Lower is better.)
 
 More examples can be found [here](examples/usage_example.ipynb).

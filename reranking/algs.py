@@ -26,7 +26,6 @@ class Reranking:
         max_na:
             The maximum number of different values of the attributes in distribution.
             The constraint is achieved by merging the n lowest probabilities attributes.
-
     """
 
     def __init__(
@@ -40,7 +39,10 @@ class Reranking:
         self.max_na = max_na
 
     def __call__(
-        self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
+        self,
+        k_max: Optional[int] = None,
+        algorithm: str = "det_greedy",
+        verbose: bool = False,
     ) -> Union[List[int], pd.DataFrame]:
         """
         Re-ranks items by the four algorithms in the paper.
@@ -66,16 +68,18 @@ class Reranking:
             3. `det_const_sort` is guaranteed to be feasible.
         """
 
+        k_max_ = len(self.item_attr) if k_max is None else k_max
+
         try:
             self.df_formatted, self.data, self.p = self._format_alg_input()
         except (ValueError, NameError) as e:
             logger.debug(f"Returning default ranking by the exception: `{e}`")
-            return list(range(min(k_max, len(self.item_attr))))
+            return list(range(min(k_max_, len(self.item_attr))))
 
         if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
-            return self.rerank_greedy(k_max, algorithm, verbose)
+            return self.rerank_greedy(k_max_, algorithm, verbose)
         elif algorithm == "det_const_sort":
-            return self.rerank_ics(k_max, verbose)
+            return self.rerank_ics(k_max_, verbose)
         else:
             raise NotImplementedError(f"Invalid algorithm name: {algorithm}.")
 
@@ -176,7 +180,7 @@ class Reranking:
         df_distr = pd.DataFrame({"attribute": distr.keys(), "distr": distr.values()})
         df = df.merge(df_distr, on="attribute", how="left").fillna(
             0.0
-        )  # NaN distr value become 0.0
+        )  # NaN distr values become 0.0
 
         data = {
             (attribute_enc, attri_rank): model_rank
@@ -191,7 +195,10 @@ class Reranking:
         return (df, data, p)
 
     def rerank_greedy(
-        self, k_max: int = 10, algorithm: str = "det_greedy", verbose: bool = False
+        self,
+        k_max: int,
+        algorithm: str,
+        verbose: bool,
     ) -> Union[List[int], pd.DataFrame]:
         """Implements the greedy-based algorithms: `DetGreedy`, `DetCons`, `DetRelaxed`."""
 
@@ -229,9 +236,7 @@ class Reranking:
         else:
             return re_ranked_ranking
 
-    def rerank_ics(
-        self, k_max: int = 10, verbose: bool = False
-    ) -> Union[List[int], pd.DataFrame]:
+    def rerank_ics(self, k_max: int, verbose: bool) -> Union[List[int], pd.DataFrame]:
         """Implements `DetConstSort` algorithm."""
 
         counts = {i: 0 for i in range(len(self.p))}
