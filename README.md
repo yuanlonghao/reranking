@@ -35,20 +35,20 @@ desired_distribution = {"a1": 0.5, "a2": 0.5}
 rerank_indices = reranking.rerank(
     item_attribute,  # attributes of the ranked items
     desired_distribution,  # desired item distribution
-    max_na=None,  # to control the max number of attributes applied
+    max_na=None,  # controls the max number of attribute categories applied
     k_max=None,  # length of output, if None, k_max is the length of `item_attribute`
     algorithm="det_greedy",  # "det_greedy", "det_cons", "det_relaxed", "det_const_sort"
     verbose=False,  # if True, the output is with detailed information
 )
 ```
-The `rerank_indices` is `[0, 3, 1, 7, 2, 8, 4, 5, 6, 9]` which is the indices of the items after re-ranking by the desired distribution. Top items of the re-ranked items will have the same distribution with the desired distribution if there are enough desired items.
-(`item_attribute` has the same order with the ranked items so it contains score information.)
+The `rerank_indices` is `[0, 3, 1, 7, 2, 8, 4, 5, 6, 9]` which is the list of item indices after re-ranking by the desired distribution. The top items of the re-ranked list will have the same distribution as the desired distribution if there are enough desired items.
+(`item_attribute` has the same order with the item list so it contains rank/score information.)
 
 ### Evaluate
 ```python
-before = reranking.ndkl(item_attribute, desired_distribution)
-
+# Evaluate the before&after of the re-ranking result above
 item_attribute_reranked = [item_attribute[i] for i in rerank_indices]
+before = reranking.ndkl(item_attribute, desired_distribution)
 after = reranking.ndkl(item_attribute_reranked, desired_distribution)
 ```
 The `before` and `after` are `0.412` and `0.172` respectively which are the normalized discounted cumulative KL-divergence (NDKL) of the ranked item attribute distribution and the desired distribution. (Lower is better.)
