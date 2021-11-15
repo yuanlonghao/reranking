@@ -40,6 +40,7 @@ rerank_indices = reranking.rerank(
     algorithm="det_greedy",  # "det_greedy", "det_cons", "det_relaxed", "det_const_sort"
     verbose=False,  # if True, the output is with detailed information
 )
+print(rerank_indices)
 ```
 The `rerank_indices` is `[0, 3, 1, 7, 2, 8, 4, 5, 6, 9]` which is the list of item indices after re-ranking by the desired distribution. The top items of the re-ranked list will have the same distribution as the desired distribution if there are enough desired items.
 (`item_attribute` has the same order with the item list so it contains rank/score information.)
@@ -50,6 +51,7 @@ The `rerank_indices` is `[0, 3, 1, 7, 2, 8, 4, 5, 6, 9]` which is the list of it
 item_attribute_reranked = [item_attribute[i] for i in rerank_indices]
 before = reranking.ndkl(item_attribute, desired_distribution)
 after = reranking.ndkl(item_attribute_reranked, desired_distribution)
+print(f"{before:.3f}, {after:.3f}")
 ```
 The `before` and `after` are `0.412` and `0.172` respectively which are the normalized discounted cumulative KL-divergence (NDKL) of the ranked item attribute distribution and the desired distribution. (Lower is better.)
 
