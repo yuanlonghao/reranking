@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
-from .reranker import Reranker
 from .metrics import *
+from .reranker import Reranker
 
 
 def rerank(
