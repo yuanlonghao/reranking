@@ -10,7 +10,7 @@ logger = getLogger(__name__)
 ## TODO: deal with this situation: attributes = ["f1", ["f1", "f2"], "f2", ...]
 
 
-class Reranking:
+class Reranker:
     """
     Re-ranking algorithms in the paper: Fairness-Aware Ranking in Search
     & Recommendation Systems with Application to LinkedIn Talent Search

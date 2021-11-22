@@ -13,7 +13,7 @@ __all__ = [
     "ndkl",
     "infeasible",
 ]
-EPSILON = 1e-5
+EPSILON = 1e-12
 
 
 def proportion(
@@ -52,9 +52,9 @@ def skew_static(
     """
 
     skews = []
-    for i, j in zip(distr_1, distr_2):
-        skews.append(math.log((i + EPSILON) / (j + EPSILON)))
-    skews_abs = [abs(i) for i in skews]
+    for p1, p2 in zip(distr_1, distr_2):
+        skews.append(math.log((p1 + EPSILON) / (p2 + EPSILON)))
+    skews_abs = [abs(v) for v in skews]
     return min(skews), max(skews), sum(skews_abs) / len(skews_abs)
 
 
@@ -64,8 +64,8 @@ def kld(distr_1: List[float], distr_2: List[float]) -> float:
     """
 
     vals = []
-    for i, j in zip(distr_1, distr_2):
-        vals.append(i * math.log((i + EPSILON) / (j + EPSILON)))
+    for p1, p2 in zip(distr_1, distr_2):
+        vals.append(p1 * math.log((p1 + EPSILON) / (p2 + EPSILON)))
     return sum(vals)
 
 
@@ -138,9 +138,9 @@ def infeasible(
                 count_attr.append(value_counts[attr])
             except KeyError:
                 count_attr.append(0)
-        for j, val in enumerate(dict_p.values()):
-            if count_attr[j] < math.floor(val * k):
+        for p, val in enumerate(dict_p.values()):
+            if count_attr[p] < math.floor(val * k):
                 infeasible_count += 1
-                if count_attr[j] != 0:
+                if count_attr[p] != 0:
                     infeasible_index += 1
     return infeasible_index, infeasible_count
