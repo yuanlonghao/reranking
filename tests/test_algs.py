@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pytest
 
-from reranking.algs import Reranking
+from reranking.reranker import Reranker
 
 
 class TestReranking:
@@ -27,7 +27,7 @@ class TestReranking:
         self, item_attributes: List[Any], distribution: Dict[Any, float]
     ) -> None:
 
-        r = Reranking(item_attributes, distribution)
+        r = Reranker(item_attributes, distribution)
         with pytest.raises((NameError, ValueError)):
             r._format_alg_input()
         default_ranking = list(range(len(item_attributes)))
@@ -98,7 +98,7 @@ class TestReranking:
         expected_data: Dict[Tuple[int, int], int],
         expected_p: List[float],
     ) -> None:
-        r = Reranking(item_attributes, distribution, max_na=max_na)
+        r = Reranker(item_attributes, distribution, max_na=max_na)
 
         # test masking
         acutal_item_attr, acutal_distr = r._mask_item_attr_and_distr()
@@ -140,7 +140,7 @@ class TestReranking:
         k_max: int,
         algorithm: str,
     ) -> None:
-        ranker = Reranking(genders, distribution)
+        ranker = Reranker(genders, distribution)
         reranking = ranker(algorithm=algorithm, k_max=k_max)
 
         re_features = [genders[i] for i in reranking]
