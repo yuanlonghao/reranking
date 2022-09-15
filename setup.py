@@ -13,12 +13,12 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="reranking",
-    version="0.3.6",
+    version="0.4.0",
     author="Longhao Yuan",
     author_email="yuanlonghao1013@gmail.com",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yuanlonghao/reranking",
     packages=setuptools.find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.8",
 )

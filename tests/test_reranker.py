@@ -27,11 +27,11 @@ class TestReranking:
         self, item_attributes: List[Any], distribution: Dict[Any, float]
     ) -> None:
 
-        r = Reranker(item_attributes, distribution)
+        r = Reranker()
         with pytest.raises((NameError, ValueError)):
-            r._format_alg_input()
+            r._format_alg_input(item_attributes, distribution, None)
         default_ranking = list(range(len(item_attributes)))
-        reranking = r()
+        reranking = r(item_attributes, distribution)
         assert default_ranking == reranking
 
     @pytest.mark.parametrize(
@@ -98,15 +98,19 @@ class TestReranking:
         expected_data: Dict[Tuple[int, int], int],
         expected_p: List[float],
     ) -> None:
-        r = Reranker(item_attributes, distribution, max_na=max_na)
+        r = Reranker()
 
         # test masking
-        acutal_item_attr, acutal_distr = r._mask_item_attr_and_distr()
+        acutal_item_attr, acutal_distr = r._mask_item_attr_and_distr(
+            item_attributes, distribution, max_na
+        )
         assert set(expected_item_attr) == set(acutal_item_attr)
         assert set(expected_distr_key) == set(acutal_distr)
 
         # test algorithm inputs
-        _, actual_data, actual_p = r._format_alg_input()
+        _, actual_data, actual_p = r._format_alg_input(
+            item_attributes, distribution, max_na
+        )
         assert expected_data == actual_data
         np.testing.assert_almost_equal(expected_p, actual_p)
 
@@ -140,8 +144,8 @@ class TestReranking:
         k_max: int,
         algorithm: str,
     ) -> None:
-        ranker = Reranker(genders, distribution)
-        reranking = ranker(algorithm=algorithm, k_max=k_max)
+        ranker = Reranker(algorithm, verbose=False)
+        reranking = ranker(genders, distribution, k_max)
 
         re_features = [genders[i] for i in reranking]
         acutal_male = re_features.count("male")

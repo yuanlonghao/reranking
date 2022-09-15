@@ -1,6 +1,6 @@
 # reranking: fairness/personalization for recommendation and search
 
-[![Python](https://img.shields.io/badge/python-3.6%7C3.7%7C3.8%7C3.9-red?logo=Python&logoColor=white)](https://www.python.org)
+[![Python](https://img.shields.io/badge/python-3.7%7C3.8%7C3.9%7C3.10-red?logo=Python&logoColor=white)](https://www.python.org)
 [![PyTest](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml)
 [![pre-commit](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml)
 [![PyPI](https://img.shields.io/pypi/v/reranking?color=green)](https://pypi.org/project/reranking/)
