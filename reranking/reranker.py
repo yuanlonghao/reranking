@@ -30,19 +30,21 @@ class Reranker:
 
     def __init__(
         self,
-        item_attribute: List[Any],
-        desired_distribution: Dict[Any, float],
-        max_na: Optional[int] = None,
+        algorithm: str = "det_greedy",
+        verbose: bool = False,
     ) -> None:
-        self.item_attr = item_attribute
-        self.distr = desired_distribution
-        self.max_na = max_na
+        self.algorithm = algorithm
+        self.verbose = verbose
+
+    def multiprocessing_warpper(self, args: Any) -> Any:
+        return self.__call__(*args)
 
     def __call__(
         self,
+        item_attribute: List[Any],
+        desired_distribution: Dict[Any, float],
         k_max: Optional[int] = None,
-        algorithm: str = "det_greedy",
-        verbose: bool = False,
+        max_na: Optional[int] = None,
     ) -> Union[List[int], pd.DataFrame]:
         """
         Re-ranks items by the four algorithms in the paper.
@@ -68,22 +70,31 @@ class Reranker:
             3. `det_const_sort` is guaranteed to be feasible.
         """
 
-        k_max_ = len(self.item_attr) if k_max is None else k_max
+        k_max_ = len(item_attribute) if k_max is None else k_max
 
         try:
-            self.df_formatted, self.data, self.p = self._format_alg_input()
+            self.df_formatted, self.data, self.p = self._format_alg_input(
+                item_attribute,
+                desired_distribution,
+                max_na,
+            )
         except (ValueError, NameError) as e:
             logger.debug(f"Returning default ranking by the exception: `{e}`")
-            return list(range(min(k_max_, len(self.item_attr))))
+            return list(range(min(k_max_, len(item_attribute))))
 
-        if algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
-            return self.rerank_greedy(k_max_, algorithm, verbose)
-        elif algorithm == "det_const_sort":
-            return self.rerank_ics(k_max_, verbose)
+        if self.algorithm in ["det_greedy", "det_cons", "det_relaxed"]:
+            return self.rerank_greedy(k_max_)
+        elif self.algorithm == "det_const_sort":
+            return self.rerank_ics(k_max_)
         else:
-            raise NotImplementedError(f"Invalid algorithm name: {algorithm}.")
+            raise NotImplementedError(f"Invalid algorithm name: {self.algorithm}.")
 
-    def _mask_item_attr_and_distr(self) -> Tuple[List[Any], Dict[Any, float]]:
+    def _mask_item_attr_and_distr(
+        self,
+        item_attribute: List[Any],
+        desired_distribution: Dict[Any, float],
+        max_na: Optional[int] = None,
+    ) -> Tuple[List[Any], Dict[Any, float]]:
         """
         Processes input item attributes and desired distribution to the proper form.
 
@@ -104,15 +115,15 @@ class Reranker:
                 - set_2 True, set_3 False: mask set_2 in `self.item_attr`
         """
 
-        item_attr = self.item_attr.copy()
-        distr = self.distr.copy()
+        item_attr = item_attribute.copy()
+        distr = desired_distribution.copy()
 
         distri_sum = sum(distr.values())
         if distri_sum > 1 + 1e-6:
             raise ValueError("Sum of desired attribute distribution larger than 1.")
 
-        if self.max_na is not None:
-            n_merge = len(distr) - self.max_na
+        if max_na is not None:
+            n_merge = len(distr) - max_na
             if n_merge > 0:
                 sorted_attrs = sorted(distr, key=lambda x: distr[x])
                 distr = self._mask_distr(distr, sorted_attrs[: n_merge + 1])
@@ -151,6 +162,9 @@ class Reranker:
 
     def _format_alg_input(
         self,
+        item_attribute: List[Any],
+        desired_distribution: Dict[Any, float],
+        max_na: Optional[int] = None,
     ) -> Tuple[pd.DataFrame, Dict[Tuple[int, int], int], List[float]]:
         """Formats inputs of algorithms.
 
@@ -160,7 +174,11 @@ class Reranker:
             p: List[float] of distributions of each attribute.
         """
 
-        item_attr, distr = self._mask_item_attr_and_distr()
+        item_attr, distr = self._mask_item_attr_and_distr(
+            item_attribute,
+            desired_distribution,
+            max_na,
+        )
         df = pd.DataFrame(
             {
                 "model_rank": list(range(len(item_attr))),
@@ -197,8 +215,6 @@ class Reranker:
     def rerank_greedy(
         self,
         k_max: int,
-        algorithm: str,
-        verbose: bool,
     ) -> Union[List[int], pd.DataFrame]:
         """Implements the greedy-based algorithms: `DetGreedy`, `DetCons`, `DetRelaxed`."""
 
@@ -219,7 +235,7 @@ class Reranker:
             if below_min or below_max:
                 try:
                     next_attr = self._process_violated_attributes(
-                        below_min, below_max, counts, k, algorithm
+                        below_min, below_max, counts, k, self.algorithm
                     )
                 except KeyError as ke:  # not enough item of desired attribute
                     attr_short = ke.args[0][0]
@@ -231,12 +247,12 @@ class Reranker:
                 next_attr = self._get_top_rank_attr(re_ranked_ranking)
             re_ranked_ranking.append(self.data[(next_attr, counts[next_attr])])
             counts[next_attr] += 1
-        if verbose:
+        if self.verbose:
             return self._get_verbose(re_ranked_ranking)
         else:
             return re_ranked_ranking
 
-    def rerank_ics(self, k_max: int, verbose: bool) -> Union[List[int], pd.DataFrame]:
+    def rerank_ics(self, k_max: int) -> Union[List[int], pd.DataFrame]:
         """Implements `DetConstSort` algorithm."""
 
         counts = {i: 0 for i in range(len(self.p))}
@@ -291,7 +307,7 @@ class Reranker:
                     min_counts = temp_min_counts.copy()
 
         re_ranked_ranking = list(re_ranked_ranking_dict.values())
-        if verbose:
+        if self.verbose:
             return self._get_verbose(re_ranked_ranking)
         else:
             return re_ranked_ranking

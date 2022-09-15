@@ -1,6 +1,6 @@
 # reranking: fairness/personalization for recommendation and search
 
-[![Python](https://img.shields.io/badge/python-3.6%7C3.7%7C3.8%7C3.9-red?logo=Python&logoColor=white)](https://www.python.org)
+[![Python](https://img.shields.io/badge/python-3.7%7C3.8%7C3.9%7C3.10-red?logo=Python&logoColor=white)](https://www.python.org)
 [![PyTest](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pytest.yml)
 [![pre-commit](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/yuanlonghao/reranking/actions/workflows/pre-commit.yml)
 [![PyPI](https://img.shields.io/pypi/v/reranking?color=green)](https://pypi.org/project/reranking/)
@@ -35,8 +35,8 @@ desired_distribution = {"a1": 0.5, "a2": 0.5}
 rerank_indices = reranking.rerank(
     item_attribute,  # attributes of the ranked items
     desired_distribution,  # desired item distribution
-    max_na=None,  # controls the max number of attribute categories applied
     k_max=None,  # length of output, if None, k_max is the length of `item_attribute`
+    max_na=None,  # controls the max number of attribute categories applied
     algorithm="det_greedy",  # "det_greedy", "det_cons", "det_relaxed", "det_const_sort"
     verbose=False,  # if True, the output is with detailed information
 )

@@ -2,15 +2,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from reranking.metrics import (
-    infeasible,
-    kld,
-    ndcg_diff,
-    ndkl,
-    proportion,
-    skew,
-    skew_static,
-)
+from reranking.metrics import *
 
 
 class TestMetrics:

@@ -1,5 +1,6 @@
 # Run unittest
 
 ```shell
-$ pytest
+$ poetry run pytest
+
 ```
