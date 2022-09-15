@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
-from .metrics import *
 from .reranker import Reranker
 
 
@@ -41,10 +40,5 @@ def rerank_multiprocessing(
         (ia, dd, k_max, max_na) for ia, dd in zip(item_attribute, desired_distribution)
     ]
 
-    def reranker_warpper(
-        args: Tuple[List[Any], Dict[Any, float], Optional[int], Optional[int]]
-    ) -> Union[List[List[int]], List[pd.DataFrame]]:
-        return reranker(*args)
-
     with mp.Pool(n_workers) as p:
-        return p.map(reranker_warpper, inputs)
+        return p.map(reranker.multiprocessing_warpper, inputs)

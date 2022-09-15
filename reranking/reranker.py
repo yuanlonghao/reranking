@@ -36,6 +36,9 @@ class Reranker:
         self.algorithm = algorithm
         self.verbose = verbose
 
+    def multiprocessing_warpper(self, args: Any) -> Any:
+        return self.__call__(*args)
+
     def __call__(
         self,
         item_attribute: List[Any],
