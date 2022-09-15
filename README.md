@@ -35,8 +35,8 @@ desired_distribution = {"a1": 0.5, "a2": 0.5}
 rerank_indices = reranking.rerank(
     item_attribute,  # attributes of the ranked items
     desired_distribution,  # desired item distribution
-    max_na=None,  # controls the max number of attribute categories applied
     k_max=None,  # length of output, if None, k_max is the length of `item_attribute`
+    max_na=None,  # controls the max number of attribute categories applied
     algorithm="det_greedy",  # "det_greedy", "det_cons", "det_relaxed", "det_const_sort"
     verbose=False,  # if True, the output is with detailed information
 )

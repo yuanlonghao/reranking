@@ -32,18 +32,19 @@ def rerank_multiprocessing(
     verbose: bool = False,
     n_workers: int = 0,
 ) -> Union[List[List[int]], List[pd.DataFrame]]:
+
     if n_workers == 0:
         n_workers = mp.cpu_count()
 
     reranker = Reranker(algorithm, verbose)
+    inputs = [
+        (ia, dd, k_max, max_na) for ia, dd in zip(item_attribute, desired_distribution)
+    ]
 
     def reranker_warpper(
         args: Tuple[List[Any], Dict[Any, float], Optional[int], Optional[int]]
     ) -> Union[List[List[int]], List[pd.DataFrame]]:
         return reranker(*args)
 
-    inputs = [
-        (ia, dd, k_max, max_na) for ia, dd in zip(item_attribute, desired_distribution)
-    ]
     with mp.Pool(n_workers) as p:
         return p.map(reranker_warpper, inputs)
